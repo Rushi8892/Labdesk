@@ -1,36 +1,394 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 1.0.0
+  description: Metadata-driven laboratory configuration and result workflow
 servers:
   - url: /api
-    description: Base API path
-tags:
-  - name: health
-    description: Health operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
-      tags: [health]
-      summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/HealthStatus"
+              schema: { $ref: "#/components/schemas/HealthStatus" }
+  /catalog:
+    get:
+      operationId: getCatalog
+      responses:
+        "200":
+          description: Complete catalog
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Catalog" }
+  /tests:
+    post:
+      operationId: saveTest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Test" }
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Test" }
+  /parameters:
+    post:
+      operationId: saveParameter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TestParameter" }
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TestParameter" }
+  /options:
+    post:
+      operationId: saveOption
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ParameterOption" }
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ParameterOption" }
+  /references:
+    post:
+      operationId: saveReference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReferenceInterval" }
+      responses:
+        "200":
+          description: Saved as unapproved version
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReferenceInterval" }
+  /references/{id}/approve:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    post:
+      operationId: approveReference
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ApprovalInput" }
+      responses:
+        "200":
+          description: Approved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReferenceInterval" }
+  /masters:
+    post:
+      operationId: saveMaster
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MasterInput" }
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Master" }
+  /results:
+    get:
+      operationId: getResults
+      responses:
+        "200":
+          description: Result list
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/LabResult" } }
+    post:
+      operationId: saveResult
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResultInput" }
+      responses:
+        "200":
+          description: Saved draft or updated entered result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LabResult" }
+  /results/{id}/transition:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    post:
+      operationId: transitionResult
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TransitionInput" }
+      responses:
+        "200":
+          description: Transitioned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LabResult" }
+  /results/{id}/report:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    get:
+      operationId: getReport
+      responses:
+        "200":
+          description: Immutable released report
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReportSnapshot" }
+  /audit:
+    get:
+      operationId: getAudit
+      responses:
+        "200":
+          description: Configuration and result audit history
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/AuditEvent" } }
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
-        status:
-          type: string
-      required:
-        - status
-
+        status: { type: string }
+    Master:
+      type: object
+      required: [id, code, name, active]
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        name: { type: string }
+        active: { type: boolean }
+    MasterInput:
+      type: object
+      required: [kind, code, name, active]
+      properties:
+        id: { type: integer }
+        kind: { type: string, enum: [Category, Specimen, Method] }
+        code: { type: string }
+        name: { type: string }
+        active: { type: boolean }
+    Test:
+      type: object
+      required: [code, name, categoryId, specimenTypeId, active, displayOrder, price]
+      properties:
+        id: { type: integer }
+        code: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        shortName: { type: string }
+        categoryId: { type: integer }
+        specimenTypeId: { type: integer }
+        methodId: { type: [integer, "null"] }
+        description: { type: string }
+        patientPreparation: { type: string }
+        collectionInstructions: { type: string }
+        container: { type: string }
+        minimumSample: { type: string }
+        turnaroundTime: { type: string }
+        price: { type: number, minimum: 0 }
+        displayOrder: { type: integer }
+        active: { type: boolean }
+        reportTitle: { type: string }
+        notes: { type: string }
+    TestParameter:
+      type: object
+      required: [testId, code, name, dataType, required, allowNegative, referenceType, displayOrder, active]
+      properties:
+        id: { type: integer }
+        testId: { type: integer }
+        code: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        dataType: { type: string, enum: [Numeric, Text, Dropdown, Boolean, Date] }
+        unit: { type: string }
+        resultFormat: { type: string }
+        decimalPlaces: { type: [integer, "null"], minimum: 0, maximum: 8 }
+        required: { type: boolean }
+        allowNegative: { type: boolean }
+        technicalMin: { type: [number, "null"] }
+        technicalMax: { type: [number, "null"] }
+        referenceType: { type: string, enum: [Range, Text, Decision Value, None] }
+        displayReferenceText: { type: string }
+        displayOrder: { type: integer }
+        active: { type: boolean }
+        notes: { type: string }
+    ParameterOption:
+      type: object
+      required: [parameterId, code, label, sortOrder, abnormal, active]
+      properties:
+        id: { type: integer }
+        parameterId: { type: integer }
+        code: { type: string, minLength: 1 }
+        label: { type: string, minLength: 1 }
+        sortOrder: { type: integer }
+        abnormal: { type: boolean }
+        active: { type: boolean }
+    ReferenceInterval:
+      type: object
+      required: [parameterId, context, sex, active]
+      properties:
+        id: { type: integer }
+        parameterId: { type: integer }
+        version: { type: integer }
+        context: { type: string }
+        ageFrom: { type: [number, "null"] }
+        ageTo: { type: [number, "null"] }
+        sex: { type: string, enum: [Any, Male, Female, Other] }
+        lowerValue: { type: [number, "null"] }
+        upperValue: { type: [number, "null"] }
+        lowerOperator: { type: string, enum: [">=", ">"] }
+        upperOperator: { type: string, enum: ["<=", "<"] }
+        referenceText: { type: string }
+        decisionType: { type: string }
+        criticalLow: { type: [number, "null"] }
+        criticalHigh: { type: [number, "null"] }
+        unit: { type: string }
+        effectiveFrom: { type: string }
+        effectiveTo: { type: string }
+        source: { type: string }
+        approvedBy: { type: [string, "null"] }
+        approvedAt: { type: [string, "null"] }
+        active: { type: boolean }
+    Catalog:
+      type: object
+      required: [tests, parameters, options, references, categories, specimens, methods]
+      properties:
+        tests: { type: array, items: { $ref: "#/components/schemas/Test" } }
+        parameters: { type: array, items: { $ref: "#/components/schemas/TestParameter" } }
+        options: { type: array, items: { $ref: "#/components/schemas/ParameterOption" } }
+        references: { type: array, items: { $ref: "#/components/schemas/ReferenceInterval" } }
+        categories: { type: array, items: { $ref: "#/components/schemas/Master" } }
+        specimens: { type: array, items: { $ref: "#/components/schemas/Master" } }
+        methods: { type: array, items: { $ref: "#/components/schemas/Master" } }
+    ApprovalInput:
+      type: object
+      required: [approvedBy]
+      properties:
+        approvedBy: { type: string, minLength: 2 }
+    ResultValue:
+      type: object
+      required: [parameterId, value, disposition, comment]
+      properties:
+        parameterId: { type: integer }
+        value: { type: string }
+        disposition: { type: string, enum: [Completed, Not Done] }
+        skipApprovedBy: { type: string }
+        skipReason: { type: string }
+        comment: { type: string }
+        flag: { type: string }
+        referenceText: { type: string }
+        referenceId: { type: [integer, "null"] }
+    ResultInput:
+      type: object
+      required: [testId, patientName, patientCode, age, sex, context, collectedAt, comment, values]
+      properties:
+        id: { type: integer }
+        testId: { type: integer }
+        patientName: { type: string, minLength: 1 }
+        patientCode: { type: string, minLength: 1 }
+        age: { type: number, minimum: 0 }
+        sex: { type: string, enum: [Male, Female, Other] }
+        context: { type: string }
+        collectedAt: { type: string }
+        comment: { type: string }
+        values: { type: array, items: { $ref: "#/components/schemas/ResultValue" } }
+    LabResult:
+      allOf:
+        - { $ref: "#/components/schemas/ResultInput" }
+        - type: object
+          required: [id, status, createdAt, testName]
+          properties:
+            id: { type: integer }
+            testName: { type: string }
+            status: { type: string, enum: [Draft, Entered, Verified, Released] }
+            createdAt: { type: string }
+            updatedAt: { type: string }
+            verifiedBy: { type: string }
+            releasedBy: { type: string }
+            releasedAt: { type: string }
+            configuration: { $ref: "#/components/schemas/ResultConfiguration" }
+    ResultConfiguration:
+      type: object
+      required: [test, parameters, options, references]
+      properties:
+        test: { $ref: "#/components/schemas/Test" }
+        parameters: { type: array, items: { $ref: "#/components/schemas/TestParameter" } }
+        options: { type: array, items: { $ref: "#/components/schemas/ParameterOption" } }
+        references: { type: array, items: { $ref: "#/components/schemas/ReferenceInterval" } }
+    TransitionInput:
+      type: object
+      required: [status, actor]
+      properties:
+        status: { type: string, enum: [Entered, Verified, Released] }
+        actor: { type: string, minLength: 2 }
+    ReportLine:
+      type: object
+      required: [parameterId, name, code, unit, value, referenceText, flag, comment, disposition, displayOrder]
+      properties:
+        parameterId: { type: integer }
+        name: { type: string }
+        code: { type: string }
+        unit: { type: string }
+        value: { type: string }
+        referenceText: { type: string }
+        flag: { type: string }
+        comment: { type: string }
+        disposition: { type: string }
+        displayOrder: { type: integer }
+        reference: { $ref: "#/components/schemas/ReferenceInterval" }
+        option: { $ref: "#/components/schemas/ParameterOption" }
+        skipApprovedBy: { type: string }
+        skipReason: { type: string }
+    ReportSnapshot:
+      type: object
+      required: [resultId, reportTitle, testName, testCode, patientName, patientCode, age, sex, collectedAt, releasedAt, verifiedBy, releasedBy, comment, notes, lines]
+      properties:
+        resultId: { type: integer }
+        reportTitle: { type: string }
+        testName: { type: string }
+        testCode: { type: string }
+        patientName: { type: string }
+        patientCode: { type: string }
+        age: { type: number }
+        sex: { type: string }
+        collectedAt: { type: string }
+        releasedAt: { type: string }
+        verifiedBy: { type: string }
+        releasedBy: { type: string }
+        comment: { type: string }
+        notes: { type: string }
+        lines: { type: array, items: { $ref: "#/components/schemas/ReportLine" } }
+    AuditEvent:
+      type: object
+      required: [id, entity, entityId, action, actor, timestamp, details]
+      properties:
+        id: { type: integer }
+        entity: { type: string }
+        entityId: { type: integer }
+        action: { type: string }
+        actor: { type: string }
+        timestamp: { type: string }
+        details: { type: string }

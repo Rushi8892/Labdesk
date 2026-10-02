@@ -1,0 +1,1 @@
+- [Result review integrity](result-review-integrity.md) — review captured metadata; edits invalidate entry; decision thresholds must not reverse abnormal triggers.

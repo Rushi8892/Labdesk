@@ -21,12 +21,12 @@ args = ["pnpm", "--filter", "@workspace/api-server", "run", "build"]
 NODE_ENV = "production"
 
 [services.production.run]
-# we don't run through pnpm to make startup faster in production
-args = ["node", "--enable-source-maps", "artifacts/api-server/dist/index.mjs"]
+# Launch the compiled ASP.NET API
+args = ["dotnet", "artifacts/api-server/bin/Debug/net10.0/LabDesk.Api.dll"]
 
 [services.production.run.env]
 PORT = "8080"
-NODE_ENV = "production"
+ASPNETCORE_URLS = "http://0.0.0.0:8080"
 
 [services.production.health.startup]
 path = "/api/healthz"

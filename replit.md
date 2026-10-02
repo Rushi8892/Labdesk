@@ -1,45 +1,35 @@
-# [Project name]
+# LabDesk
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A desktop laboratory workstation for configurable test catalogs, dynamic result entry, contextual reference approvals, and printable released reports.
 
-## Run & Operate
+## Product constraints
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Use one metadata-driven engine for all categories. Never introduce category-specific tables or result-entry screens.
+- The user wants a desktop-style application: dense sidebar navigation, tables and split panels. No responsive or mobile layouts are required.
+- The user needs source code, not hosted data. Replit PostgreSQL is temporary; the final database is Microsoft SQL Server.
+- The backend must be .NET with ADO.NET, not Entity Framework. Keep SQL in a repository layer and bind all values as parameters.
+- Starter catalog: CBC, Fasting Blood Glucose, Postprandial Blood Glucose, HbA1c, Lipid Profile, Liver Function Test, Kidney Function Test, Thyroid Profile, Urinalysis, Stool Routine Examination, ESR, CRP.
+- Seed parameter names, types and units. Never invent medical reference intervals or auto-approve references. Dropdown choices are laboratory configuration.
+- Never hard-delete configuration. Released reports are immutable snapshots, not renders of current configuration.
 
-## Stack
+## Run & operate
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- `pnpm --filter @workspace/api-server run dev` — .NET API under `/api`, port supplied by its managed workflow.
+- `pnpm --filter @workspace/labdesk run dev` — desktop frontend, port and base path supplied by its managed workflow.
+- `pnpm --filter @workspace/api-spec run codegen` — regenerate typed API clients after changing the API contract.
+- `pnpm run typecheck` — TypeScript workspace checks.
+- See the backend README and `database/` scripts for initialization and SQL Server setup.
 
-## Where things live
+## Source map
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/labdesk/` — React frontend rendered as HTML/CSS/JavaScript.
+- `artifacts/api-server/` — ASP.NET API, repository, domain validation and workflow logic.
+- `lib/api-spec/openapi.yaml` — API contract.
+- `lib/api-client-react/` — generated typed frontend API calls.
+- `database/` — database schema scripts.
 
-## Architecture decisions
+## Development safety boundary
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+This version is a single-laboratory development workbench. Operator-entered approval and verification names are audit attribution, not authenticated identity. Do not enter real patient data until authenticated accounts, authorization, operational validation and the laboratory's clinical sign-off are in place. No seeded medical reference intervals are clinically validated.
 
-## Product
-
-_Describe the high-level user-facing capabilities of this app once they exist._
-
-## User preferences
-
-_Populate as you build — explicit user instructions worth remembering across sessions._
-
-## Gotchas
-
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+Do not silently substitute a different runtime or database provider. Do not expose connection strings, environment secrets, or database data in source-code handoffs.

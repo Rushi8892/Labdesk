@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
-    "build": "node ./build.mjs",
-    "start": "node --enable-source-maps ./dist/index.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "dev": "ASPNETCORE_URLS=http://0.0.0.0:${PORT:-5000} dotnet run --project LabDesk.Api.csproj",
+    "build": "dotnet build LabDesk.Api.csproj",
+    "start": "ASPNETCORE_URLS=http://0.0.0.0:${PORT:-5000} dotnet run --no-build --project LabDesk.Api.csproj",
+    "typecheck": "dotnet build LabDesk.Api.csproj"
   },
   "dependencies": {
     "@workspace/api-zod": "workspace:*",
