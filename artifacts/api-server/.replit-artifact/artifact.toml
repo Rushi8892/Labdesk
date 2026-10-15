@@ -21,8 +21,7 @@ args = ["pnpm", "--filter", "@workspace/api-server", "run", "build"]
 NODE_ENV = "production"
 
 [services.production.run]
-# Launch the compiled ASP.NET API
-args = ["dotnet", "artifacts/api-server/bin/Debug/net10.0/LabDesk.Api.dll"]
+args = ["dotnet", "src/LabDesk.Api/bin/Debug/net10.0/LabDesk.Api.dll"]
 
 [services.production.run.env]
 PORT = "8080"

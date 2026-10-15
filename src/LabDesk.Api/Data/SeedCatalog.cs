@@ -4,15 +4,37 @@ public static class SeedCatalog
 {
     public static async Task Seed(Repository repository)
     {
-        if ((await repository.List<Test>("Test")).Count != 0) return;
+        if ((await repository.List<Test>("Test")).Count != 0)
+        {
+            return;
+        }
+
         var categories = new Dictionary<string, int>();
-        foreach (var (code, name) in new[] { ("HEM", "Hematology"), ("BIO", "Clinical Chemistry"), ("URI", "Urinalysis"), ("MIC", "Microbiology") })
+        foreach (var (code, name) in new[]
+        {
+            ("HEM", "Hematology"),
+            ("BIO", "Clinical Chemistry"),
+            ("URI", "Urinalysis"),
+            ("MIC", "Microbiology")
+        })
+        {
             categories[code] = (await repository.Save("Category", null, 0, code, true,
                 id => new Master(id, code, name, true), "Category", "seed", "created", "{\"seed\":true}")).Id!.Value;
+        }
+
         var specimens = new Dictionary<string, int>();
-        foreach (var (code, name) in new[] { ("WB", "Whole blood"), ("SER", "Serum"), ("PL", "Plasma"), ("UR", "Urine"), ("ST", "Stool") })
+        foreach (var (code, name) in new[]
+        {
+            ("WB", "Whole blood"),
+            ("SER", "Serum"),
+            ("PL", "Plasma"),
+            ("UR", "Urine"),
+            ("ST", "Stool")
+        })
+        {
             specimens[code] = (await repository.Save("Specimen", null, 0, code, true,
                 id => new Master(id, code, name, true), "Specimen", "seed", "created", "{\"seed\":true}")).Id!.Value;
+        }
 
         var definitions = new[]
         {
@@ -45,6 +67,7 @@ public static class SeedCatalog
             new TestDefinition("ESR", "ESR", "HEM", "WB", new[] { ("ESR", "Erythrocyte sedimentation rate", "Numeric", "mm/hr") }),
             new TestDefinition("CRP", "CRP", "BIO", "SER", new[] { ("CRP", "C-reactive protein", "Numeric", "mg/L") })
         };
+
         var order = 1;
         foreach (var definition in definitions)
         {
@@ -55,13 +78,15 @@ public static class SeedCatalog
             var parameterOrder = 1;
             foreach (var (code, name, type, unit) in definition.Parameters)
             {
-                var paramCode = code;
+                var parameterCode = code;
                 var parentTestId = test.Id!.Value;
-                await repository.Save("Parameter", null, parentTestId, paramCode, true, id =>
-                    new TestParameter(id, parentTestId, paramCode, name, type, unit, null, type == "Numeric" ? 2 : null,
-                        true, false, null, null, "None", null, parameterOrder++, true, null),
+                await repository.Save("Parameter", null, parentTestId, parameterCode, true, id =>
+                    new TestParameter(id, parentTestId, parameterCode, name, type, unit, null,
+                        type == "Numeric" ? 2 : null, true, false, null, null, "None", null,
+                        parameterOrder++, true, null),
                     "Parameter", "seed", "created", "{\"seed\":true}");
             }
+
             order++;
         }
     }
