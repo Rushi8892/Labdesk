@@ -16,9 +16,17 @@ DB_PROVIDER=PostgreSql dotnet run --project artifacts/api-server/LabDesk.Api.csp
 
 The PostgreSQL script is `database/postgresql.sql`. It uses `DATABASE_URL`, or `DB_CONNECTION_STRING`, or the standard `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, and `PGDATABASE` variables. PostgreSQL URI-form `DATABASE_URL` values are supported. Initialization creates the schema and a starter catalog only when no tests exist. The catalog includes 12 starter tests and parameters/units; it intentionally seeds no patient/result data, reference intervals, or parameter options. Add lab-approved reference values and dropdown choices through the configuration API.
 
-To use SQL Server, apply `database/sqlserver.sql` to the target database, then configure:
+For a new local SQL Server database, run `database/create-local-sqlserver.sql` in SQL Server Management Studio or Azure Data Studio. It creates the `PathologyTests` database and the tables used by the application. Then initialize the starter catalog from the repository root:
 
-```sh
+```powershell
+$env:DB_PROVIDER = "SqlServer"
+$env:DB_CONNECTION_STRING = "Server=localhost;Database=PathologyTests;Trusted_Connection=True;TrustServerCertificate=True"
+dotnet run --project artifacts/api-server/LabDesk.Api.csproj -- --initialize
+```
+
+The initializer adds the starter categories, specimen types, tests, and parameters if the catalog is empty. For an existing database, apply `database/sqlserver.sql` while connected to that database instead. The application connection must point to the database you created:
+
+```text
 DB_PROVIDER=SqlServer
 DB_CONNECTION_STRING='Server=...;Database=...;User Id=...;Password=...;Encrypt=True;TrustServerCertificate=True'
 ```
