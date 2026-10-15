@@ -13,13 +13,10 @@ export interface ResultInput {
   testId: number;
   /** @minLength 1 */
   patientName: string;
-  /** @minLength 1 */
-  patientCode: string;
   /** @minimum 0 */
   age: number;
   sex: ResultInputSex;
-  context: string;
   collectedAt: string;
-  comment: string;
   values: ResultValue[];
+  complete?: boolean;
 }

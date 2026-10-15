@@ -17,20 +17,17 @@ public record ReferenceInterval(int? Id, int ParameterId, int? Version, string C
     string? ReferenceText, string? DecisionType, decimal? CriticalLow, decimal? CriticalHigh, string? Unit,
     string? EffectiveFrom, string? EffectiveTo, string? Source, string? ApprovedBy, string? ApprovedAt, bool Active);
 public record ApprovalInput(string ApprovedBy);
-public record ResultValue(int ParameterId, string? Value, string Disposition, string? SkipApprovedBy,
-    string? SkipReason, string? Comment, string? Flag, string? ReferenceText, int? ReferenceId);
-public record ResultInput(int? Id, int TestId, string PatientName, string PatientCode, decimal Age, string Sex,
-    string? Context, string CollectedAt, string? Comment, List<ResultValue> Values);
-public record TransitionInput(string Status, string Actor);
+public record ResultValue(int ParameterId, string? Value, string? Flag = null,
+    string? ReferenceText = null, int? ReferenceId = null);
+public record ResultInput(int? Id, int TestId, string PatientName, decimal Age, string Sex,
+    string CollectedAt, List<ResultValue> Values, bool Complete = false);
 public record ReportLine(int ParameterId, string Name, string Code, string? Unit, string? Value,
-    string ReferenceText, string Flag, string? Comment, string Disposition, int DisplayOrder,
-    ReferenceInterval? Reference, ParameterOption? Option, string? SkipApprovedBy, string? SkipReason);
+    string ReferenceText, string Flag, int DisplayOrder, string? OptionLabel);
 public record ReportSnapshot(int ResultId, string ReportTitle, string TestName, string TestCode, string PatientName,
-    string PatientCode, decimal Age, string Sex, string CollectedAt, string ReleasedAt, string VerifiedBy,
-    string ReleasedBy, string? Comment, string? Notes, List<ReportLine> Lines);
-public record LabResult(int Id, int TestId, string PatientName, string PatientCode, decimal Age, string Sex,
-    string? Context, string CollectedAt, string? Comment, List<ResultValue> Values, string TestName,
-    string Status, string CreatedAt, string UpdatedAt, string? VerifiedBy, string? ReleasedBy, string? ReleasedAt,
+    decimal Age, string Sex, string CollectedAt, string CompletedAt, List<ReportLine> Lines);
+public record LabResult(int Id, int TestId, string PatientName, decimal Age, string Sex,
+    string CollectedAt, List<ResultValue> Values, string TestName, string Status, string CreatedAt,
+    string UpdatedAt, string? CompletedAt,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ResultConfiguration? Configuration = null);
 public record ResultConfiguration(Test Test, List<TestParameter> Parameters, List<ParameterOption> Options,
     List<ReferenceInterval> References);

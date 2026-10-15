@@ -83,15 +83,13 @@ export function readiness(t: Test, ix: Idx) {
 export interface Ctx {
   age: number | null;
   sex: string;
-  context: string;
   collectedAt: string;
 }
 
 export function applicable(p: TestParameter, refs: ReferenceInterval[], x: Ctx): ReferenceInterval[] {
   const day = x.collectedAt.slice(0, 10);
-  return refs.filter((r) => {
+  const matching = refs.filter((r) => {
     if (!r.active || !isApproved(r)) return false;
-    if (r.context.trim().toLowerCase() !== x.context.trim().toLowerCase()) return false;
     if (r.sex !== 'Any' && r.sex !== x.sex) return false;
     if (x.age === null || Number.isNaN(x.age)) return false;
     if (r.ageFrom !== null && r.ageFrom !== undefined && x.age < r.ageFrom) return false;
@@ -103,6 +101,17 @@ export function applicable(p: TestParameter, refs: ReferenceInterval[], x: Ctx):
     if (r.unit && p.unit && r.unit.trim() !== p.unit.trim()) return false;
     return true;
   });
+  const ranked = matching.map((r) => ({
+    r,
+    specificity: (r.sex === x.sex ? 1 : 0) +
+      (r.ageFrom !== null && r.ageFrom !== undefined || r.ageTo !== null && r.ageTo !== undefined ? 1 : 0),
+    ageWidth: (r.ageTo ?? Number.MAX_SAFE_INTEGER / 2) - (r.ageFrom ?? -Number.MAX_SAFE_INTEGER / 2),
+  })).sort((a, b) => b.specificity - a.specificity || a.ageWidth - b.ageWidth);
+  if (!ranked.length) return [];
+  const best = ranked[0];
+  return ranked
+    .filter((item) => item.specificity === best.specificity && item.ageWidth === best.ageWidth)
+    .map((item) => item.r);
 }
 
 export interface Evaluation {
@@ -158,24 +167,8 @@ export const flagTone = (f0: string) => {
 const flagToneInner = (f: string) =>
   /critical/i.test(f) ? 'pill-bad' : /^(low|high|abnormal)$/i.test(f) ? 'pill-warn' : f ? 'pill-ok' : '';
 
-export interface VState {
-  value: string;
-  disposition: 'Completed' | 'Not Done';
-  skipReason: string;
-  skipApprovedBy: string;
-  comment: string;
-}
-
-export const blankV = (): VState => ({ value: '', disposition: 'Completed', skipReason: '', skipApprovedBy: '', comment: '' });
-
-export function validateValue(p: TestParameter, v: VState, opts: ParameterOption[]): string | null {
-  if (v.disposition === 'Not Done') {
-    if (!v.skipReason.trim()) return 'Skip reason required';
-    if (!v.skipApprovedBy.trim()) return 'Skip approver required';
-    if (!v.comment.trim()) return 'Comment required for Not Done';
-    return null;
-  }
-  const val = v.value.trim();
+export function validateValue(p: TestParameter, value: string, opts: ParameterOption[]): string | null {
+  const val = value.trim();
   if (!val) return p.required ? 'Required' : null;
   if (p.dataType === 'Numeric') {
     const n = Number(val);
@@ -193,11 +186,5 @@ export function validateValue(p: TestParameter, v: VState, opts: ParameterOption
   return null;
 }
 
-export const nextStatus: Record<string, 'Entered' | 'Verified' | 'Released' | undefined> = {
-  Draft: 'Entered',
-  Entered: 'Verified',
-  Verified: 'Released',
-};
-
 export const statusTone = (s: string) =>
-  s === 'Released' ? 'pill-ok' : s === 'Verified' ? 'pill-ink' : s === 'Entered' ? 'pill-warn' : '';
+  s === 'Completed' ? 'pill-ok' : '';

@@ -2,15 +2,13 @@ import type { ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Activity, BookCheck, ClipboardList, FileText, FlaskConical, History, Layers, Ruler } from 'lucide-react';
 import { useGetCatalog, useGetResults, useHealthCheck } from '@workspace/api-client-react';
-import { setOperator, useOperator } from '@/hooks/use-lab';
 
 export function Shell({ children }: { children: ReactNode }) {
   const [loc] = useLocation();
   const cat = useGetCatalog();
   const res = useGetResults();
   const health = useHealthCheck();
-  const op = useOperator();
-  const open = (res.data ?? []).filter((r) => r.status !== 'Released').length;
+  const open = (res.data ?? []).filter((r) => r.status === 'Draft').length;
   const unappr = (cat.data?.references ?? []).filter((r) => !r.approvedBy).length;
   const items = [
     { href: '/', label: 'Test catalog', icon: FlaskConical, count: cat.data?.tests.length, match: (l: string) => l === '/' || l.startsWith('/tests') },
@@ -40,13 +38,7 @@ export function Shell({ children }: { children: ReactNode }) {
             </Link>
           ))}
         </nav>
-        <div className="p-3 border-t space-y-2" style={{ borderColor: 'hsl(var(--sidebar-border))' }}>
-          <label className="block">
-            <span className="text-[10px] uppercase tracking-widest opacity-60">Operator name</span>
-            <input value={op} onChange={(e) => setOperator(e.target.value)} placeholder="Type a name"
-              className="mt-1 w-full h-7 px-2 rounded text-xs outline-none" style={{ background: 'hsl(var(--sidebar-accent))', color: 'hsl(var(--sidebar-accent-foreground))', border: '1px solid hsl(var(--sidebar-border))' }} data-testid="input-operator" />
-          </label>
-          <p className="text-[10px] leading-snug opacity-60">Development workbench. Names are typed attribution only; there is no sign-in and no role enforcement.</p>
+        <div className="p-3 border-t" style={{ borderColor: 'hsl(var(--sidebar-border))' }}>
           <div className="flex items-center gap-1.5 text-[10px] opacity-70" data-testid="status-health">
             <Activity size={11} /> <span className="size-1.5 rounded-full" style={{ background: ok ? 'hsl(168 60% 50%)' : 'hsl(8 70% 55%)' }} /> {ok ? 'Service reachable' : health.isLoading ? 'Checking service' : 'Service unreachable'}
           </div>

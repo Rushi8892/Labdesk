@@ -1,6 +1,6 @@
 # LabDesk
 
-A desktop laboratory workstation for configurable test catalogs, dynamic result entry, contextual reference approvals, and printable released reports.
+A desktop laboratory workstation for configurable test catalogs, dynamic result entry, and printable completed reports.
 
 ## Product constraints
 
@@ -11,7 +11,9 @@ A desktop laboratory workstation for configurable test catalogs, dynamic result 
 - Keep the .NET solution at the repository root (`LabDesk.sln`) and the API project under `src/LabDesk.Api/`, using only the simple `Data`, `Models`, and `Services` folders. Keep `artifacts/api-server/` limited to the Replit workflow wrapper.
 - Starter catalog: CBC, Fasting Blood Glucose, Postprandial Blood Glucose, HbA1c, Lipid Profile, Liver Function Test, Kidney Function Test, Thyroid Profile, Urinalysis, Stool Routine Examination, ESR, CRP.
 - Seed parameter names, types and units. Never invent medical reference intervals or auto-approve references. Dropdown choices are laboratory configuration.
-- Never hard-delete configuration. Released reports are immutable snapshots, not renders of current configuration.
+- Results have only Draft and Completed states. Drafts are editable; completion validates values and captures an immutable report snapshot without a verification or release stage.
+- Result entry and reports do not use patient codes, result contexts, or result comments. Select reference intervals from age and sex, preferring the most specific applicable interval and falling back to a general interval.
+- Never hard-delete configuration. Completed reports are immutable snapshots, not renders of current configuration.
 
 ## Run & operate
 
@@ -33,6 +35,6 @@ A desktop laboratory workstation for configurable test catalogs, dynamic result 
 
 ## Development safety boundary
 
-This version is a single-laboratory development workbench. Operator-entered approval and verification names are audit attribution, not authenticated identity. Do not enter real patient data until authenticated accounts, authorization, operational validation and the laboratory's clinical sign-off are in place. No seeded medical reference intervals are clinically validated.
+This version is a single-laboratory development workbench. Operator-entered reference-approval names are audit attribution, not authenticated identity. Do not enter real patient data until authenticated accounts, authorization, operational validation and the laboratory's clinical sign-off are in place. No seeded medical reference intervals are clinically validated.
 
 Do not silently substitute a different runtime or database provider. Do not expose connection strings, environment secrets, or database data in source-code handoffs.

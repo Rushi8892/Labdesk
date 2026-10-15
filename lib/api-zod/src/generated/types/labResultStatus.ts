@@ -11,7 +11,5 @@ export type LabResultStatus = typeof LabResultStatus[keyof typeof LabResultStatu
 
 export const LabResultStatus = {
   Draft: 'Draft',
-  Entered: 'Entered',
-  Verified: 'Verified',
-  Released: 'Released',
+  Completed: 'Completed',
 } as const;

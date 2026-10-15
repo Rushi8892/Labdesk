@@ -506,7 +506,6 @@ public sealed class LabDeskService(Repository repository)
     private static (ReferenceInterval? reference, bool ambiguous) SelectReference(
         IEnumerable<ReferenceInterval> references,
         TestParameter parameter,
-        string? context,
         string sex,
         decimal age,
         DateTimeOffset collected)
@@ -514,7 +513,6 @@ public sealed class LabDeskService(Repository repository)
         var choices = references.Where(reference =>
                 reference.Active && reference.ApprovedAt is not null &&
                 reference.ParameterId == parameter.Id &&
-                string.Equals(reference.Context?.Trim(), context?.Trim() ?? "", StringComparison.OrdinalIgnoreCase) &&
                 (string.Equals(reference.Sex, "Any", StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(reference.Sex, sex, StringComparison.OrdinalIgnoreCase)) &&
                 string.Equals(reference.Unit?.Trim() ?? "", parameter.Unit?.Trim() ?? "", StringComparison.Ordinal) &&
@@ -525,12 +523,26 @@ public sealed class LabDeskService(Repository repository)
             .ToList();
         choices = choices.Where(reference =>
             EffectiveEnd(reference.EffectiveTo) is null || collected <= EffectiveEnd(reference.EffectiveTo)).ToList();
-        return choices.Count switch
-        {
-            0 => (null, false),
-            1 => (choices[0], false),
-            _ => (null, true)
-        };
+        if (choices.Count == 0) return (null, false);
+
+        // Prefer exact sex and the narrowest matching age band; unscoped adult
+        // ranges remain a fallback when no more specific interval applies.
+        var ranked = choices
+            .Select(reference => new
+            {
+                Reference = reference,
+                Specificity = (string.Equals(reference.Sex, sex, StringComparison.OrdinalIgnoreCase) ? 1 : 0) +
+                    (reference.AgeFrom is null && reference.AgeTo is null ? 0 : 1),
+                AgeWidth = (reference.AgeTo ?? decimal.MaxValue / 2) -
+                    (reference.AgeFrom ?? decimal.MinValue / 2)
+            })
+            .OrderByDescending(item => item.Specificity)
+            .ThenBy(item => item.AgeWidth)
+            .ToList();
+        var best = ranked[0];
+        var matches = ranked.Where(item => item.Specificity == best.Specificity &&
+            item.AgeWidth == best.AgeWidth).ToList();
+        return matches.Count == 1 ? (best.Reference, false) : (null, true);
     }
 
     private static decimal ParseNumeric(string value, string label)
@@ -549,7 +561,7 @@ public sealed class LabDeskService(Repository repository)
         List<ParameterOption> options,
         List<ReferenceInterval> references,
         LabResult result,
-        bool requireCompleted = false)
+        bool requireCompleted)
     {
         var byId = parameters.Where(parameter => parameter.Active)
             .ToDictionary(parameter => parameter.Id!.Value);
@@ -574,21 +586,6 @@ public sealed class LabDeskService(Repository repository)
             var value = values.FirstOrDefault(candidate => candidate.ParameterId == parameter.Id);
             if (value is null)
             {
-                continue;
-            }
-
-            var disposition = value.Disposition;
-            if (disposition is not ("Completed" or "Not Done"))
-            {
-                throw new ArgumentException("disposition must be Completed or Not Done.");
-            }
-            Require(value.Value is not null, $"value is required for {parameter.Name}.");
-            Require(value.Comment is not null, $"comment is required for {parameter.Name}.");
-            if (disposition == "Not Done")
-            {
-                Required(value.SkipApprovedBy, $"skipApprovedBy for {parameter.Name}", 2);
-                Required(value.SkipReason, $"skipReason for {parameter.Name}");
-                evaluated.Add(value with { Flag = "", ReferenceText = "Not configured", ReferenceId = null });
                 continue;
             }
 
@@ -650,7 +647,7 @@ public sealed class LabDeskService(Repository repository)
                     break;
             }
 
-            var selected = SelectReference(references, parameter, result.Context, result.Sex, result.Age, collected);
+            var selected = SelectReference(references, parameter, result.Sex, result.Age, collected);
             if (selected.ambiguous)
             {
                 throw new ArgumentException($"Multiple approved reference intervals apply to {parameter.Name}; resolve configuration ambiguity.");
@@ -776,15 +773,24 @@ public sealed class LabDeskService(Repository repository)
             evaluated.Add(value with { Flag = flag, ReferenceText = referenceText, ReferenceId = reference?.Id });
         }
 
+        if (requireCompleted)
+        {
+            foreach (var parameter in parameters.Where(parameter => parameter.Active && parameter.Required))
+            {
+                if (!evaluated.Any(value => value.ParameterId == parameter.Id &&
+                    !string.IsNullOrWhiteSpace(value.Value)))
+                {
+                    throw new ArgumentException($"A value is required for {parameter.Name}.");
+                }
+            }
+        }
+
         return evaluated;
     }
 
     public async Task<LabResult> SaveResult(ResultInput input)
     {
         Required(input.PatientName, "patientName");
-        Required(input.PatientCode, "patientCode");
-        Require(input.Context is not null, "context is required.");
-        Require(input.Comment is not null, "comment is required.");
         var inputValues = input.Values ?? throw new ArgumentException("values is required.");
         Require(input.Age >= 0, "age must be zero or greater.");
         Require(input.Sex is "Male" or "Female" or "Other", "sex must be Male, Female, or Other.");
@@ -796,9 +802,9 @@ public sealed class LabDeskService(Repository repository)
         {
             throw new KeyNotFoundException($"Result {input.Id} was not found.");
         }
-        if (stored is not null && stored.Result.Status is "Verified" or "Released")
+        if (stored is not null && stored.Result.Status is "Completed" or "Released")
         {
-            throw new ArgumentException("Verified and Released results are immutable.");
+            throw new ArgumentException("Completed results are immutable.");
         }
 
         Test test;
@@ -832,42 +838,50 @@ public sealed class LabDeskService(Repository repository)
         }
 
         var resultId = stored?.Result.Id ?? input.Id ?? 0;
-        var candidate = new LabResult(resultId, input.TestId, input.PatientName.Trim(), input.PatientCode.Trim(),
-            input.Age, input.Sex, input.Context ?? "", input.CollectedAt, input.Comment ?? "", inputValues,
-            test.Name, "Draft", stored?.Result.CreatedAt ?? Now(), Now(), null, null, null);
-        var values = ValidateAndEvaluate(inputValues, parameters, options, references, candidate);
+        var completedAt = input.Complete ? Now() : null;
+        var candidate = new LabResult(resultId, input.TestId, input.PatientName.Trim(), input.Age, input.Sex,
+            input.CollectedAt, inputValues, test.Name, input.Complete ? "Completed" : "Draft",
+            stored?.Result.CreatedAt ?? Now(), Now(), completedAt);
+        var values = ValidateAndEvaluate(inputValues, parameters, options, references, candidate, input.Complete);
         candidate = candidate with { Values = values };
         var details = JsonSerializer.Serialize(new { before = stored?.Result, after = candidate }, Json);
         if (stored is null)
         {
             var created = await repository.Save("Result", null, input.TestId, null, true,
-                id => new StoredResult(candidate with { Id = id }, test, parameters, options, references, null),
-                "Result", "operator", "created", details);
+                id =>
+                {
+                    var savedResult = candidate with { Id = id };
+                    var snapshot = input.Complete
+                        ? BuildSnapshot(savedResult, test, parameters, options)
+                        : null;
+                    return new StoredResult(savedResult, test, parameters, options, references, snapshot);
+                },
+                "Result", "operator", input.Complete ? "completed" : "created", details);
             return EnrichResult(created);
-        }
-
-        if (stored.Result.Status == "Entered")
-        {
-            candidate = candidate with { Status = "Draft" };
         }
 
         var updated = await repository.InTransaction(async (connection, transaction) =>
         {
             var latest = await repository.Get<StoredResult>("Result", input.Id!.Value, connection, transaction)
                 ?? throw new KeyNotFoundException($"Result {input.Id} was not found.");
-            if (latest.Result.Status is "Verified" or "Released")
+            if (latest.Result.Status is "Completed" or "Released")
             {
-                throw new ArgumentException("Verified and Released results are immutable.");
+                throw new ArgumentException("Completed results are immutable.");
             }
             if (latest.Result.Status != stored.Result.Status || latest.Result.UpdatedAt != stored.Result.UpdatedAt)
             {
                 throw new ArgumentException("Result changed concurrently; reload it before editing.");
             }
 
+            var savedResult = candidate with { Id = latest.Result.Id };
+            var snapshot = input.Complete
+                ? BuildSnapshot(savedResult, latest.Test, latest.Parameters, latest.Options)
+                : null;
             var next = new StoredResult(candidate with { Id = latest.Result.Id }, latest.Test,
-                latest.Parameters, latest.Options, latest.References, null);
+                latest.Parameters, latest.Options, latest.References, snapshot);
             await repository.UpdateInTransaction(connection, transaction, "Result", latest.Result.Id, next);
-            await repository.Audit(connection, transaction, "Result", latest.Result.Id, "updated", "operator", details);
+            await repository.Audit(connection, transaction, "Result", latest.Result.Id,
+                input.Complete ? "completed" : "updated", "operator", details);
             return next;
         });
         return EnrichResult(updated);
@@ -882,107 +896,41 @@ public sealed class LabDeskService(Repository repository)
     private static LabResult EnrichResult(StoredResult stored) =>
         stored.Result with
         {
+            Status = stored.Result.Status is "Released" ? "Completed" :
+                stored.Result.Status is "Entered" or "Verified" ? "Draft" : stored.Result.Status,
             Configuration = new ResultConfiguration(stored.Test, stored.Parameters, stored.Options, stored.References)
         };
 
-    public async Task<LabResult> Transition(int id, TransitionInput input)
-    {
-        var actor = Actor(input.Actor, "actor");
-        return await repository.InTransaction(async (connection, transaction) =>
-        {
-            var stored = await repository.Get<StoredResult>("Result", id, connection, transaction)
-                ?? throw new KeyNotFoundException($"Result {id} was not found.");
-            var current = stored.Result;
-            var expected = (current.Status, input.Status) switch
-            {
-                ("Draft", "Entered") => true,
-                ("Entered", "Verified") => true,
-                ("Verified", "Released") => true,
-                _ => false
-            };
-            if (!expected)
-            {
-                throw new ArgumentException($"Invalid result transition from {current.Status} to {input.Status}.");
-            }
-
-            if (input.Status == "Entered")
-            {
-                var validated = ValidateAndEvaluate(current.Values, stored.Parameters, stored.Options,
-                    stored.References, current, true);
-                foreach (var parameter in stored.Parameters.Where(parameter => parameter.Active && parameter.Required))
-                {
-                    if (!validated.Any(value => value.ParameterId == parameter.Id))
-                    {
-                        throw new ArgumentException($"A value or approved Not Done disposition is required for {parameter.Name}.");
-                    }
-                }
-
-                current = current with { Values = validated };
-            }
-            if (input.Status == "Verified")
-            {
-                current = current with { VerifiedBy = actor };
-            }
-
-            var updatedAt = Now();
-            current = current with
-            {
-                Status = input.Status,
-                UpdatedAt = updatedAt,
-                ReleasedBy = input.Status == "Released" ? actor : current.ReleasedBy,
-                ReleasedAt = input.Status == "Released" ? updatedAt : current.ReleasedAt
-            };
-            ReportSnapshot? snapshot = stored.Snapshot;
-            if (input.Status == "Released")
-            {
-                if (string.IsNullOrWhiteSpace(current.VerifiedBy))
-                {
-                    throw new ArgumentException("A result must be verified before release.");
-                }
-
-                snapshot = BuildSnapshot(current, stored, actor, updatedAt);
-            }
-
-            var updated = stored with { Result = current, Snapshot = snapshot };
-            await repository.UpdateInTransaction(connection, transaction, "Result", id, updated);
-            await repository.Audit(connection, transaction, "Result", id, "transitioned", actor,
-                JsonSerializer.Serialize(new { from = stored.Result.Status, to = input.Status }, Json));
-            return EnrichResult(updated);
-        });
-    }
-
-    private static ReportSnapshot BuildSnapshot(LabResult result, StoredResult stored, string actor, string releasedAt)
+    private static ReportSnapshot BuildSnapshot(
+        LabResult result,
+        Test test,
+        List<TestParameter> parameters,
+        List<ParameterOption> options)
     {
         var lines = new List<ReportLine>();
-        foreach (var parameter in stored.Parameters.Where(parameter => parameter.Active)
+        foreach (var parameter in parameters.Where(parameter => parameter.Active)
                      .OrderBy(parameter => parameter.DisplayOrder).ThenBy(parameter => parameter.Id))
         {
             var value = result.Values.FirstOrDefault(item => item.ParameterId == parameter.Id);
-            value ??= new ResultValue(parameter.Id!.Value, "", "Completed", null, null, "", "",
-                "Not configured", null);
-            var reference = value.ReferenceId is int referenceId
-                ? stored.References.FirstOrDefault(item => item.Id == referenceId)
-                : null;
-            var option = value.Disposition == "Completed"
-                ? stored.Options.FirstOrDefault(item => item.ParameterId == parameter.Id && item.Code == value.Value)
-                : null;
+            var option = options.FirstOrDefault(item =>
+                item.ParameterId == parameter.Id && item.Code == value?.Value && item.Active);
             lines.Add(new ReportLine(parameter.Id!.Value, parameter.Name, parameter.Code, parameter.Unit ?? "",
-                value.Value, value.ReferenceText ?? "Not configured", value.Flag ?? "", value.Comment ?? "",
-                value.Disposition, parameter.DisplayOrder, reference, option, value.SkipApprovedBy, value.SkipReason));
+                value?.Value, value?.ReferenceText ?? "Not configured", value?.Flag ?? "",
+                parameter.DisplayOrder, option?.Label));
         }
 
-        return new ReportSnapshot(result.Id, stored.Test.ReportTitle ?? stored.Test.Name, stored.Test.Name,
-            stored.Test.Code, result.PatientName, result.PatientCode, result.Age, result.Sex, result.CollectedAt,
-            releasedAt, result.VerifiedBy!, actor, result.Comment ?? "", stored.Test.Notes ?? "", lines);
+        return new ReportSnapshot(result.Id, test.ReportTitle ?? test.Name, test.Name,
+            test.Code, result.PatientName, result.Age, result.Sex, result.CollectedAt,
+            result.CompletedAt ?? Now(), lines);
     }
 
     public async Task<ReportSnapshot> Report(int id)
     {
         var stored = await repository.Get<StoredResult>("Result", id)
             ?? throw new KeyNotFoundException($"Result {id} was not found.");
-        if (stored.Result.Status != "Released" || stored.Snapshot is null)
+        if (stored.Result.Status is not ("Completed" or "Released") || stored.Snapshot is null)
         {
-            throw new ArgumentException("Report is available only after release.");
+            throw new ArgumentException("Report is available only after completion.");
         }
 
         return stored.Snapshot;

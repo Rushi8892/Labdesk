@@ -81,8 +81,6 @@ api.MapPost("/references/{id:int}/approve", (int id, ApprovalInput input, LabDes
 api.MapPost("/masters", (MasterInput input, LabDeskService service) => service.SaveMaster(input));
 api.MapGet("/results", (LabDeskService service) => service.Results());
 api.MapPost("/results", (ResultInput input, LabDeskService service) => service.SaveResult(input));
-api.MapPost("/results/{id:int}/transition", (int id, TransitionInput input, LabDeskService service) =>
-    service.Transition(id, input));
 api.MapGet("/results/{id:int}/report", (int id, LabDeskService service) => service.Report(id));
 api.MapGet("/audit", (LabDeskService service) => service.Audit());
 

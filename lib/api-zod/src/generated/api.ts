@@ -365,10 +365,9 @@ export const SaveMasterResponse = zod.object({
 
 
 
-
 export const getResultsResponseOneAgeMin = 0;
 
-
+export const getResultsResponseOneCompleteDefault = false;
 
 export const getResultsResponseTwoConfigurationTestPriceMin = 0;
 
@@ -385,32 +384,24 @@ export const GetResultsResponseItem = zod.object({
   "id": zod.number().int(),
   "testId": zod.number().int(),
   "patientName": zod.string().min(1),
-  "patientCode": zod.string().min(1),
   "age": zod.number().min(getResultsResponseOneAgeMin),
   "sex": zod.enum(['Male', 'Female', 'Other']),
-  "context": zod.string(),
   "collectedAt": zod.string(),
-  "comment": zod.string(),
   "values": zod.array(zod.object({
   "parameterId": zod.number().int(),
   "value": zod.string(),
-  "disposition": zod.enum(['Completed', 'Not Done']),
-  "skipApprovedBy": zod.string().optional(),
-  "skipReason": zod.string().optional(),
-  "comment": zod.string(),
   "flag": zod.string().optional(),
   "referenceText": zod.string().optional(),
   "referenceId": zod.number().int().nullish()
-}))
+})),
+  "complete": zod.boolean().default(getResultsResponseOneCompleteDefault)
 }).and(zod.object({
   "id": zod.number().int(),
   "testName": zod.string(),
-  "status": zod.enum(['Draft', 'Entered', 'Verified', 'Released']),
+  "status": zod.enum(['Draft', 'Completed']),
   "createdAt": zod.string(),
-  "updatedAt": zod.string().optional(),
-  "verifiedBy": zod.string().optional(),
-  "releasedBy": zod.string().optional(),
-  "releasedAt": zod.string().optional(),
+  "updatedAt": zod.string(),
+  "completedAt": zod.string().optional(),
   "configuration": zod.object({
   "test": zod.object({
   "id": zod.number().int().optional(),
@@ -490,39 +481,31 @@ export const GetResultsResponse = zod.array(GetResultsResponseItem)
 
 
 
-
 export const saveResultBodyAgeMin = 0;
 
-
+export const saveResultBodyCompleteDefault = false;
 
 export const SaveResultBody = zod.object({
   "id": zod.number().int().optional(),
   "testId": zod.number().int(),
   "patientName": zod.string().min(1),
-  "patientCode": zod.string().min(1),
   "age": zod.number().min(saveResultBodyAgeMin),
   "sex": zod.enum(['Male', 'Female', 'Other']),
-  "context": zod.string(),
   "collectedAt": zod.string(),
-  "comment": zod.string(),
   "values": zod.array(zod.object({
   "parameterId": zod.number().int(),
   "value": zod.string(),
-  "disposition": zod.enum(['Completed', 'Not Done']),
-  "skipApprovedBy": zod.string().optional(),
-  "skipReason": zod.string().optional(),
-  "comment": zod.string(),
   "flag": zod.string().optional(),
   "referenceText": zod.string().optional(),
   "referenceId": zod.number().int().nullish()
-}))
+})),
+  "complete": zod.boolean().default(saveResultBodyCompleteDefault)
 })
-
 
 
 export const saveResultResponseOneAgeMin = 0;
 
-
+export const saveResultResponseOneCompleteDefault = false;
 
 export const saveResultResponseTwoConfigurationTestPriceMin = 0;
 
@@ -539,32 +522,24 @@ export const SaveResultResponse = zod.object({
   "id": zod.number().int(),
   "testId": zod.number().int(),
   "patientName": zod.string().min(1),
-  "patientCode": zod.string().min(1),
   "age": zod.number().min(saveResultResponseOneAgeMin),
   "sex": zod.enum(['Male', 'Female', 'Other']),
-  "context": zod.string(),
   "collectedAt": zod.string(),
-  "comment": zod.string(),
   "values": zod.array(zod.object({
   "parameterId": zod.number().int(),
   "value": zod.string(),
-  "disposition": zod.enum(['Completed', 'Not Done']),
-  "skipApprovedBy": zod.string().optional(),
-  "skipReason": zod.string().optional(),
-  "comment": zod.string(),
   "flag": zod.string().optional(),
   "referenceText": zod.string().optional(),
   "referenceId": zod.number().int().nullish()
-}))
+})),
+  "complete": zod.boolean().default(saveResultResponseOneCompleteDefault)
 }).and(zod.object({
   "id": zod.number().int(),
   "testName": zod.string(),
-  "status": zod.enum(['Draft', 'Entered', 'Verified', 'Released']),
+  "status": zod.enum(['Draft', 'Completed']),
   "createdAt": zod.string(),
-  "updatedAt": zod.string().optional(),
-  "verifiedBy": zod.string().optional(),
-  "releasedBy": zod.string().optional(),
-  "releasedAt": zod.string().optional(),
+  "updatedAt": zod.string(),
+  "completedAt": zod.string().optional(),
   "configuration": zod.object({
   "test": zod.object({
   "id": zod.number().int().optional(),
@@ -642,150 +617,9 @@ export const SaveResultResponse = zod.object({
 }))
 
 
-export const TransitionResultParams = zod.object({
-  "id": zod.coerce.number().int()
-})
-
-export const transitionResultBodyActorMin = 2;
-
-
-
-export const TransitionResultBody = zod.object({
-  "status": zod.enum(['Entered', 'Verified', 'Released']),
-  "actor": zod.string().min(transitionResultBodyActorMin)
-})
-
-
-
-export const transitionResultResponseOneAgeMin = 0;
-
-
-
-export const transitionResultResponseTwoConfigurationTestPriceMin = 0;
-
-
-
-export const transitionResultResponseTwoConfigurationParametersItemDecimalPlacesMin = 0;
-export const transitionResultResponseTwoConfigurationParametersItemDecimalPlacesMax = 8;
-
-
-
-
-
-export const TransitionResultResponse = zod.object({
-  "id": zod.number().int(),
-  "testId": zod.number().int(),
-  "patientName": zod.string().min(1),
-  "patientCode": zod.string().min(1),
-  "age": zod.number().min(transitionResultResponseOneAgeMin),
-  "sex": zod.enum(['Male', 'Female', 'Other']),
-  "context": zod.string(),
-  "collectedAt": zod.string(),
-  "comment": zod.string(),
-  "values": zod.array(zod.object({
-  "parameterId": zod.number().int(),
-  "value": zod.string(),
-  "disposition": zod.enum(['Completed', 'Not Done']),
-  "skipApprovedBy": zod.string().optional(),
-  "skipReason": zod.string().optional(),
-  "comment": zod.string(),
-  "flag": zod.string().optional(),
-  "referenceText": zod.string().optional(),
-  "referenceId": zod.number().int().nullish()
-}))
-}).and(zod.object({
-  "id": zod.number().int(),
-  "testName": zod.string(),
-  "status": zod.enum(['Draft', 'Entered', 'Verified', 'Released']),
-  "createdAt": zod.string(),
-  "updatedAt": zod.string().optional(),
-  "verifiedBy": zod.string().optional(),
-  "releasedBy": zod.string().optional(),
-  "releasedAt": zod.string().optional(),
-  "configuration": zod.object({
-  "test": zod.object({
-  "id": zod.number().int().optional(),
-  "code": zod.string().min(1),
-  "name": zod.string().min(1),
-  "shortName": zod.string().optional(),
-  "categoryId": zod.number().int(),
-  "specimenTypeId": zod.number().int(),
-  "methodId": zod.number().int().nullish(),
-  "description": zod.string().optional(),
-  "patientPreparation": zod.string().optional(),
-  "collectionInstructions": zod.string().optional(),
-  "container": zod.string().optional(),
-  "minimumSample": zod.string().optional(),
-  "turnaroundTime": zod.string().optional(),
-  "price": zod.number().min(transitionResultResponseTwoConfigurationTestPriceMin),
-  "displayOrder": zod.number().int(),
-  "active": zod.boolean(),
-  "reportTitle": zod.string().optional(),
-  "notes": zod.string().optional()
-}),
-  "parameters": zod.array(zod.object({
-  "id": zod.number().int().optional(),
-  "testId": zod.number().int(),
-  "code": zod.string().min(1),
-  "name": zod.string().min(1),
-  "dataType": zod.enum(['Numeric', 'Text', 'Dropdown', 'Boolean', 'Date']),
-  "unit": zod.string().optional(),
-  "resultFormat": zod.string().optional(),
-  "decimalPlaces": zod.number().int().min(transitionResultResponseTwoConfigurationParametersItemDecimalPlacesMin).max(transitionResultResponseTwoConfigurationParametersItemDecimalPlacesMax).nullish(),
-  "required": zod.boolean(),
-  "allowNegative": zod.boolean(),
-  "technicalMin": zod.number().nullish(),
-  "technicalMax": zod.number().nullish(),
-  "referenceType": zod.enum(['Range', 'Text', 'Decision Value', 'None']),
-  "displayReferenceText": zod.string().optional(),
-  "displayOrder": zod.number().int(),
-  "active": zod.boolean(),
-  "notes": zod.string().optional()
-})),
-  "options": zod.array(zod.object({
-  "id": zod.number().int().optional(),
-  "parameterId": zod.number().int(),
-  "code": zod.string().min(1),
-  "label": zod.string().min(1),
-  "sortOrder": zod.number().int(),
-  "abnormal": zod.boolean(),
-  "active": zod.boolean()
-})),
-  "references": zod.array(zod.object({
-  "id": zod.number().int().optional(),
-  "parameterId": zod.number().int(),
-  "version": zod.number().int().optional(),
-  "context": zod.string(),
-  "ageFrom": zod.number().nullish(),
-  "ageTo": zod.number().nullish(),
-  "sex": zod.enum(['Any', 'Male', 'Female', 'Other']),
-  "lowerValue": zod.number().nullish(),
-  "upperValue": zod.number().nullish(),
-  "lowerOperator": zod.enum(['>=', '>']).optional(),
-  "upperOperator": zod.enum(['<=', '<']).optional(),
-  "referenceText": zod.string().optional(),
-  "decisionType": zod.string().optional(),
-  "criticalLow": zod.number().nullish(),
-  "criticalHigh": zod.number().nullish(),
-  "unit": zod.string().optional(),
-  "effectiveFrom": zod.string().optional(),
-  "effectiveTo": zod.string().optional(),
-  "source": zod.string().optional(),
-  "approvedBy": zod.string().nullish(),
-  "approvedAt": zod.string().nullish(),
-  "active": zod.boolean()
-}))
-}).optional()
-}))
-
-
 export const GetReportParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
-
-
 
 export const GetReportResponse = zod.object({
   "resultId": zod.number().int(),
@@ -793,15 +627,10 @@ export const GetReportResponse = zod.object({
   "testName": zod.string(),
   "testCode": zod.string(),
   "patientName": zod.string(),
-  "patientCode": zod.string(),
   "age": zod.number(),
   "sex": zod.string(),
   "collectedAt": zod.string(),
-  "releasedAt": zod.string(),
-  "verifiedBy": zod.string(),
-  "releasedBy": zod.string(),
-  "comment": zod.string(),
-  "notes": zod.string(),
+  "completedAt": zod.string(),
   "lines": zod.array(zod.object({
   "parameterId": zod.number().int(),
   "name": zod.string(),
@@ -810,44 +639,8 @@ export const GetReportResponse = zod.object({
   "value": zod.string(),
   "referenceText": zod.string(),
   "flag": zod.string(),
-  "comment": zod.string(),
-  "disposition": zod.string(),
   "displayOrder": zod.number().int(),
-  "reference": zod.object({
-  "id": zod.number().int().optional(),
-  "parameterId": zod.number().int(),
-  "version": zod.number().int().optional(),
-  "context": zod.string(),
-  "ageFrom": zod.number().nullish(),
-  "ageTo": zod.number().nullish(),
-  "sex": zod.enum(['Any', 'Male', 'Female', 'Other']),
-  "lowerValue": zod.number().nullish(),
-  "upperValue": zod.number().nullish(),
-  "lowerOperator": zod.enum(['>=', '>']).optional(),
-  "upperOperator": zod.enum(['<=', '<']).optional(),
-  "referenceText": zod.string().optional(),
-  "decisionType": zod.string().optional(),
-  "criticalLow": zod.number().nullish(),
-  "criticalHigh": zod.number().nullish(),
-  "unit": zod.string().optional(),
-  "effectiveFrom": zod.string().optional(),
-  "effectiveTo": zod.string().optional(),
-  "source": zod.string().optional(),
-  "approvedBy": zod.string().nullish(),
-  "approvedAt": zod.string().nullish(),
-  "active": zod.boolean()
-}).optional(),
-  "option": zod.object({
-  "id": zod.number().int().optional(),
-  "parameterId": zod.number().int(),
-  "code": zod.string().min(1),
-  "label": zod.string().min(1),
-  "sortOrder": zod.number().int(),
-  "abnormal": zod.boolean(),
-  "active": zod.boolean()
-}).optional(),
-  "skipApprovedBy": zod.string().optional(),
-  "skipReason": zod.string().optional()
+  "optionLabel": zod.string().optional()
 }))
 })
 

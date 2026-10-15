@@ -194,21 +194,9 @@ export interface ApprovalInput {
   approvedBy: string;
 }
 
-export type ResultValueDisposition = typeof ResultValueDisposition[keyof typeof ResultValueDisposition];
-
-
-export const ResultValueDisposition = {
-  Completed: 'Completed',
-  Not_Done: 'Not Done',
-} as const;
-
 export interface ResultValue {
   parameterId: number;
   value: string;
-  disposition: ResultValueDisposition;
-  skipApprovedBy?: string;
-  skipReason?: string;
-  comment: string;
   flag?: string;
   referenceText?: string;
   /** @nullable */
@@ -229,15 +217,12 @@ export interface ResultInput {
   testId: number;
   /** @minLength 1 */
   patientName: string;
-  /** @minLength 1 */
-  patientCode: string;
   /** @minimum 0 */
   age: number;
   sex: ResultInputSex;
-  context: string;
   collectedAt: string;
-  comment: string;
   values: ResultValue[];
+  complete?: boolean;
 }
 
 export type LabResultStatus = typeof LabResultStatus[keyof typeof LabResultStatus];
@@ -245,9 +230,7 @@ export type LabResultStatus = typeof LabResultStatus[keyof typeof LabResultStatu
 
 export const LabResultStatus = {
   Draft: 'Draft',
-  Entered: 'Entered',
-  Verified: 'Verified',
-  Released: 'Released',
+  Completed: 'Completed',
 } as const;
 
 export interface ResultConfiguration {
@@ -262,27 +245,10 @@ export type LabResult = ResultInput & {
   testName: string;
   status: LabResultStatus;
   createdAt: string;
-  updatedAt?: string;
-  verifiedBy?: string;
-  releasedBy?: string;
-  releasedAt?: string;
+  updatedAt: string;
+  completedAt?: string;
   configuration?: ResultConfiguration;
 };
-
-export type TransitionInputStatus = typeof TransitionInputStatus[keyof typeof TransitionInputStatus];
-
-
-export const TransitionInputStatus = {
-  Entered: 'Entered',
-  Verified: 'Verified',
-  Released: 'Released',
-} as const;
-
-export interface TransitionInput {
-  status: TransitionInputStatus;
-  /** @minLength 2 */
-  actor: string;
-}
 
 export interface ReportLine {
   parameterId: number;
@@ -292,13 +258,8 @@ export interface ReportLine {
   value: string;
   referenceText: string;
   flag: string;
-  comment: string;
-  disposition: string;
   displayOrder: number;
-  reference?: ReferenceInterval;
-  option?: ParameterOption;
-  skipApprovedBy?: string;
-  skipReason?: string;
+  optionLabel?: string;
 }
 
 export interface ReportSnapshot {
@@ -307,15 +268,10 @@ export interface ReportSnapshot {
   testName: string;
   testCode: string;
   patientName: string;
-  patientCode: string;
   age: number;
   sex: string;
   collectedAt: string;
-  releasedAt: string;
-  verifiedBy: string;
-  releasedBy: string;
-  comment: string;
-  notes: string;
+  completedAt: string;
   lines: ReportLine[];
 }
 

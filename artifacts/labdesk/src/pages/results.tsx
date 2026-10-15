@@ -6,7 +6,7 @@ import { ResultEntry } from '@/components/result-entry';
 import { useCatalog } from '@/hooks/use-lab';
 import { fmtDate, statusTone } from '@/lib/lab';
 
-const STATUSES = ['Draft', 'Entered', 'Verified', 'Released'];
+const STATUSES = ['Draft', 'Completed'];
 
 export default function ResultsPage() {
   const res = useGetResults();
@@ -21,7 +21,7 @@ export default function ResultsPage() {
   }, [res.data]);
   const rows = useMemo(() => {
     const t = s.trim().toLowerCase();
-    return [...(res.data ?? [])].filter((r) => (!status || r.status === status) && (!t || `${r.patientName} ${r.patientCode} ${r.testName}`.toLowerCase().includes(t)))
+    return [...(res.data ?? [])].filter((r) => (!status || r.status === status) && (!t || `${r.patientName} ${r.testName}`.toLowerCase().includes(t)))
       .sort((a, b) => b.id - a.id);
   }, [res.data, status, s]);
   const current = typeof sel === 'number' ? res.data?.find((r) => r.id === sel) : undefined;
@@ -29,13 +29,13 @@ export default function ResultsPage() {
 
   return (
     <>
-      <PageHead title="Results" sub={res.data ? `${res.data.length} results · ${counts.Draft ?? 0} draft · ${counts.Entered ?? 0} entered · ${counts.Verified ?? 0} verified · ${counts.Released ?? 0} released` : 'Loading worklist'}>
+      <PageHead title="Results" sub={res.data ? `${res.data.length} results · ${counts.Draft ?? 0} draft · ${counts.Completed ?? 0} completed` : 'Loading worklist'}>
         <button className="btn btn-primary" onClick={() => setSel('new')} disabled={!ix} data-testid="button-new-result"><Plus size={14} /> New result</button>
       </PageHead>
       <div className="flex flex-1 min-h-0">
         <section className="w-[400px] shrink-0 border-r flex flex-col">
           <div className="p-3 border-b space-y-2">
-            <input className="input" placeholder="Search patient, code, test" value={s} onChange={(e) => setS(e.target.value)} data-testid="input-search-results" />
+            <input className="input" placeholder="Search patient or test" value={s} onChange={(e) => setS(e.target.value)} data-testid="input-search-results" />
             <div className="flex gap-1 flex-wrap">
               {['', ...STATUSES].map((st) => (
                 <button key={st} onClick={() => setStatus(st)} className={`btn btn-sm ${status === st ? 'btn-ink' : ''}`} data-testid={`filter-status-${st || 'all'}`}>{st || 'All'}{st ? ` ${counts[st] ?? 0}` : ''}</button>
@@ -49,7 +49,7 @@ export default function ResultsPage() {
             <table className="tbl"><tbody>
               {rows.map((r) => (
                 <tr key={r.id} className={`click ${r.id === sel ? 'sel' : ''}`} onClick={() => setSel(r.id)} data-testid={`row-result-${r.id}`}>
-                  <td><div className="font-semibold">{r.patientName}</div><div className="mono text-muted-foreground">{r.patientCode}</div></td>
+                  <td><div className="font-semibold">{r.patientName}</div></td>
                   <td><div>{r.testName}</div><div className="text-[11px] text-muted-foreground">{fmtDate(r.collectedAt)}</div></td>
                   <td><Pill tone={statusTone(r.status)}>{r.status}</Pill></td>
                 </tr>

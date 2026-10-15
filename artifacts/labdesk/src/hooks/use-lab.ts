@@ -1,4 +1,4 @@
-import { useMemo, useSyncExternalStore } from 'react';
+import { useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   getGetAuditQueryKey,
@@ -12,7 +12,6 @@ import {
   useSaveReference,
   useSaveResult,
   useSaveTest,
-  useTransitionResult,
 } from '@workspace/api-client-react';
 import { useToast } from '@/hooks/use-toast';
 import { indexCatalog, msg } from '@/lib/lab';
@@ -46,23 +45,11 @@ export function useLab() {
     approveReference: useApproveReference(opts),
     saveMaster: useSaveMaster(opts),
     saveResult: useSaveResult(opts),
-    transition: useTransitionResult(opts),
   };
 }
 
-// Temporary operator attribution. Not an authenticated identity.
-const KEY = 'labdesk.operator';
-const subs = new Set<() => void>();
-export function setOperator(v: string) {
-  localStorage.setItem(KEY, v);
-  subs.forEach((f) => f());
-}
+// Used only as a convenient default for reference approval attribution.
+const OPERATOR_KEY = 'labdesk.operator';
 export function useOperator(): string {
-  return useSyncExternalStore(
-    (f) => {
-      subs.add(f);
-      return () => subs.delete(f);
-    },
-    () => localStorage.getItem(KEY) ?? '',
-  );
+  return typeof localStorage === 'undefined' ? '' : localStorage.getItem(OPERATOR_KEY) ?? '';
 }

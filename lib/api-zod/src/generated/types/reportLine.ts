@@ -5,8 +5,6 @@
  * Metadata-driven laboratory configuration and result workflow
  * OpenAPI spec version: 1.0.0
  */
-import type { ParameterOption } from './parameterOption';
-import type { ReferenceInterval } from './referenceInterval';
 
 export interface ReportLine {
   parameterId: number;
@@ -16,11 +14,6 @@ export interface ReportLine {
   value: string;
   referenceText: string;
   flag: string;
-  comment: string;
-  disposition: string;
   displayOrder: number;
-  reference?: ReferenceInterval;
-  option?: ParameterOption;
-  skipApprovedBy?: string;
-  skipReason?: string;
+  optionLabel?: string;
 }

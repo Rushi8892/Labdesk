@@ -14,9 +14,7 @@ export type LabResult = ResultInput & {
   testName: string;
   status: LabResultStatus;
   createdAt: string;
-  updatedAt?: string;
-  verifiedBy?: string;
-  releasedBy?: string;
-  releasedAt?: string;
+  updatedAt: string;
+  completedAt?: string;
   configuration?: ResultConfiguration;
 };

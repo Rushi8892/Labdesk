@@ -1,19 +1,19 @@
 ---
-name: Result review integrity
-description: Why entry review must use captured metadata and why entry edits invalidate verification.
+name: Result and snapshot integrity
+description: Simple result lifecycle and historical report snapshot rules.
 ---
+
+Keep results to two states: Draft and Completed. Drafts are editable; completion validates values and captures the report snapshot in one operation. Do not add intermediate result states, verifier/releaser steps, patient codes, contexts, or result comments.
+
+**Why:** the user asked for result entry to stay simple, with no stages or extra statuses, and explicitly removed patient code and context from result entry.
+
+**How to apply:** Keep the result form and worklist limited to Draft/Completed. Completed results are locked and printable only from their captured snapshot.
 
 Review existing results against the configuration captured with that result, not the live test catalog.
 
-**Why:** Laboratories can change labels, units, types, options and approved references while an entry awaits verification. Rendering live metadata can misrepresent the values the server evaluated, even before report release.
+**Why:** Laboratories can change labels, units, types, options and approved references. Rendering live metadata can misrepresent the values evaluated when the result was completed.
 
-**How to apply:** New result forms use the current catalog; saved-result forms use their captured configuration. Released reports use only their released report snapshot.
-
-Treat edits to an Entered result as a return to Draft. Verification must transition the persisted Entered record directly, without first saving it again.
-
-**Why:** A frontend that saves before every transition silently returns Entered to Draft and makes verification fail. More importantly, changed values must be entered again before verification.
-
-**How to apply:** Keep explicit edit-to-draft and verify actions separate. Do not shortcut status transitions to compensate for saving.
+**How to apply:** New drafts use the current catalog; existing drafts use captured configuration; completed reports use only their saved snapshot.
 
 For configured Decision Value flags, describe whether a threshold is an abnormal trigger rather than assuming it represents a normal condition. Keep displayed flags aligned with server evaluation.
 

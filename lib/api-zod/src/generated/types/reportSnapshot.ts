@@ -13,14 +13,9 @@ export interface ReportSnapshot {
   testName: string;
   testCode: string;
   patientName: string;
-  patientCode: string;
   age: number;
   sex: string;
   collectedAt: string;
-  releasedAt: string;
-  verifiedBy: string;
-  releasedBy: string;
-  comment: string;
-  notes: string;
+  completedAt: string;
   lines: ReportLine[];
 }

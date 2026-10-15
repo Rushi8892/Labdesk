@@ -1,1 +1,1 @@
-- [Result review integrity](result-review-integrity.md) — review captured metadata; edits invalidate entry; decision thresholds must not reverse abnormal triggers.
+- [Result and snapshot integrity](result-review-integrity.md) — keep the result flow to Draft and Completed, and preserve captured result metadata in reports.

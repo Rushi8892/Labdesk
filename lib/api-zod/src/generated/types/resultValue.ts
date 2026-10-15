@@ -5,15 +5,10 @@
  * Metadata-driven laboratory configuration and result workflow
  * OpenAPI spec version: 1.0.0
  */
-import type { ResultValueDisposition } from './resultValueDisposition';
 
 export interface ResultValue {
   parameterId: number;
   value: string;
-  disposition: ResultValueDisposition;
-  skipApprovedBy?: string;
-  skipReason?: string;
-  comment: string;
   flag?: string;
   referenceText?: string;
   /** @nullable */
