@@ -1,0 +1,14 @@
+<header class="page-head no-print">
+  <div><h1>Test catalog</h1><div class="page-sub" data-slot="sub">Loading configuration</div></div>
+  <div class="page-actions"><button class="btn btn-primary" data-act="new-test" data-testid="button-new-test" disabled><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> New test</button></div>
+</header>
+<div class="toolbar no-print">
+  <div class="search-wrap"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input class="input" data-f="search" placeholder="Search code or name" data-testid="input-search-tests"></div>
+  <select class="select w-44" data-f="cat" data-testid="select-filter-category"><option value="">All categories</option></select>
+  <select class="select w-44" data-f="spec" data-testid="select-filter-specimen"><option value="">All specimens</option></select>
+  <select class="select w-36" data-f="act" data-testid="select-filter-active">
+    <option value="">Active + inactive</option><option value="true">Active only</option><option value="false">Inactive only</option>
+  </select>
+  <span class="ml-auto xs muted" data-slot="count" data-testid="text-row-count">0 shown</span>
+</div>
+<div class="scroll flex-1" data-slot="body"></div>

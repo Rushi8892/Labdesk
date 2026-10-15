@@ -1,0 +1,16 @@
+<div class="scroll flex-1" data-slot="state" hidden></div>
+<div class="col flex-1" data-slot="content" hidden>
+  <header class="page-head no-print">
+    <div><h1 data-slot="title"></h1><div class="page-sub"><a href="#/" data-testid="link-back-catalog"><svg class="ic" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M19 12H5"/></svg> Test catalog</a></div></div>
+    <div class="page-actions" data-slot="actions"></div>
+  </header>
+  <div class="info-grid" data-slot="info"></div>
+  <div class="split">
+    <section class="col" style="flex:1;min-width:0;border-right:1px solid hsl(var(--border))">
+      <div class="sec-head"><div class="b">Parameters <span class="mono muted" data-slot="pcount"></span></div>
+        <button class="btn btn-primary btn-sm" data-act="new-param" data-testid="button-new-parameter"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> Add parameter</button></div>
+      <div class="scroll flex-1" data-slot="params"></div>
+    </section>
+    <aside class="aside" data-slot="aside"></aside>
+  </div>
+</div>

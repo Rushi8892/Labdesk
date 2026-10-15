@@ -1,29 +1,54 @@
 using LabDesk.Api;
+using System.Diagnostics;
 
-var repository = new Repository();
+// Use the output directory so configuration works from dotnet run, a published
+// folder, or the Replit wrapper regardless of the current working directory.
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args.Where(argument => argument != "--initialize").ToArray(),
+    ContentRootPath = AppContext.BaseDirectory
+});
+builder.Configuration
+    .AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: false)
+    .AddEnvironmentVariables();
+
+var repository = new Repository(builder.Configuration);
 if (args.Contains("--initialize"))
 {
+    var schemaName = repository.Provider == "SqlServer" ? "sqlserver.sql" : "postgresql.sql";
+    var schema = Path.Combine(AppContext.BaseDirectory, "database", schemaName);
     var directory = new DirectoryInfo(Directory.GetCurrentDirectory());
-    while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "database", "postgresql.sql")))
+    while (!File.Exists(schema) && directory is not null)
     {
+        schema = Path.Combine(directory.FullName, "database", schemaName);
         directory = directory.Parent;
     }
 
-    if (directory is null)
+    if (!File.Exists(schema))
     {
-        throw new FileNotFoundException("Could not locate database schema scripts.");
+        throw new FileNotFoundException(
+            "Could not locate database schema scripts. Keep the database folder beside the executable.");
     }
 
-    var schema = Path.Combine(directory.FullName, "database",
-        repository.Provider == "SqlServer" ? "sqlserver.sql" : "postgresql.sql");
-    await Repository.InitializeAsync(repository.Provider, schema);
+    await repository.InitializeAsync(schema);
     await SeedCatalog.Seed(repository);
-    Console.WriteLine($"Initialized {repository.Provider} development catalog.");
+    Console.WriteLine($"Initialized {repository.Provider} schema and starter catalog.");
     return;
 }
 
-var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls($"http://0.0.0.0:{Environment.GetEnvironmentVariable("PORT") ?? "5000"}");
+var port = builder.Configuration["PORT"];
+if (!string.IsNullOrWhiteSpace(port) &&
+    (!int.TryParse(port, out var parsedPort) || parsedPort is < 1 or > 65535))
+{
+    throw new InvalidOperationException("PORT must be an integer from 1 through 65535.");
+}
+
+var serverUrl = !string.IsNullOrWhiteSpace(port)
+    ? $"http://0.0.0.0:{port}"
+    : builder.Configuration["ASPNETCORE_URLS"]
+        ?? builder.Configuration["Server:Url"]
+        ?? "http://localhost:5000";
+builder.WebHost.UseUrls(serverUrl);
 builder.Services.AddSingleton(repository);
 builder.Services.AddSingleton<LabDeskService>();
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -31,11 +56,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     options.SerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
 });
-builder.Services.AddCors(options =>
-    options.AddDefaultPolicy(policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
-
 var app = builder.Build();
-app.UseCors();
 app.Use(async (context, next) =>
 {
     try
@@ -58,6 +79,12 @@ app.Use(async (context, next) =>
             throw;
         }
 
+        if (status == StatusCodes.Status500InternalServerError)
+        {
+            app.Logger.LogError(exception, "Unhandled request error for {Method} {Path}.",
+                context.Request.Method, context.Request.Path);
+        }
+
         context.Response.Clear();
         context.Response.StatusCode = status;
         context.Response.ContentType = "application/json";
@@ -68,6 +95,10 @@ app.Use(async (context, next) =>
         await context.Response.WriteAsJsonAsync(new { error = message });
     }
 });
+
+// The desktop interface and API share the same origin and port.
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 var api = app.MapGroup("/api");
 api.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
@@ -83,5 +114,28 @@ api.MapGet("/results", (LabDeskService service) => service.Results());
 api.MapPost("/results", (ResultInput input, LabDeskService service) => service.SaveResult(input));
 api.MapGet("/results/{id:int}/report", (int id, LabDeskService service) => service.Report(id));
 api.MapGet("/audit", (LabDeskService service) => service.Audit());
+
+app.Map("/api/{**path}", () => Results.NotFound(new { error = "API endpoint not found." }));
+app.MapFallbackToFile("index.html");
+
+if (OperatingSystem.IsWindows() && builder.Configuration.GetValue("Browser:OpenOnStart", true))
+{
+    app.Lifetime.ApplicationStarted.Register(() =>
+    {
+        try
+        {
+            var address = new UriBuilder(app.Urls.First());
+            if (address.Host is "0.0.0.0" or "::" or "[::]")
+            {
+                address.Host = "localhost";
+            }
+            Process.Start(new ProcessStartInfo(address.Uri.AbsoluteUri) { UseShellExecute = true });
+        }
+        catch (Exception exception)
+        {
+            app.Logger.LogWarning(exception, "Could not open the browser. Open the configured server URL manually.");
+        }
+    });
+}
 
 app.Run();

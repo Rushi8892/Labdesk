@@ -1,51 +1,27 @@
-# See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
-
-# compiled output
-dist
-tmp
-out-tsc
-*.tsbuildinfo
+# .NET build/intermediate files
 **/bin/
 **/obj/
-.expo
-.expo-shared
+**/node_modules/
+dist/
+build/
+*.tsbuildinfo
+TestResults/
+*.user
+*.suo
 
-# dependencies
-node_modules
+# Local settings and generated distribution/verification output
+appsettings.Local.json
+/publish/
+/generated-artifacts/
+*.log
+*.tmp
+*.temp
 
-# IDEs and editors
-/.idea
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
-
-# IDE - VSCode
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-
-# misc
-/.sass-cache
-/connect.lock
-/coverage
-/libpeerconnection.log
-npm-debug.log
-yarn-error.log
-testem.log
-/typings
-
-# System Files
+# Editor and operating-system caches
+.vs/
+.idea/
+.vscode/
 .DS_Store
 Thumbs.db
-
-.cursor/rules/nx-rules.mdc
-.github/instructions/nx.instructions.md
-
-# Replit
 .cache/
 .local/

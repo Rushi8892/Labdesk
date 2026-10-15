@@ -533,8 +533,11 @@ public sealed class LabDeskService(Repository repository)
                 Reference = reference,
                 Specificity = (string.Equals(reference.Sex, sex, StringComparison.OrdinalIgnoreCase) ? 1 : 0) +
                     (reference.AgeFrom is null && reference.AgeTo is null ? 0 : 1),
-                AgeWidth = (reference.AgeTo ?? decimal.MaxValue / 2) -
-                    (reference.AgeFrom ?? decimal.MinValue / 2)
+                // Two unbounded decimal sentinels can overflow on subtraction.
+                AgeWidth = reference.AgeFrom is null && reference.AgeTo is null
+                    ? decimal.MaxValue
+                    : (reference.AgeTo ?? decimal.MaxValue / 2) -
+                        (reference.AgeFrom ?? decimal.MinValue / 2)
             })
             .OrderByDescending(item => item.Specificity)
             .ThenBy(item => item.AgeWidth)
@@ -624,9 +627,11 @@ public sealed class LabDeskService(Repository repository)
                     }
                     break;
                 case "Boolean":
-                    if (!bool.TryParse(raw, out _))
+                    if (!bool.TryParse(raw, out _) &&
+                        !raw.Equals("Yes", StringComparison.OrdinalIgnoreCase) &&
+                        !raw.Equals("No", StringComparison.OrdinalIgnoreCase))
                     {
-                        throw new ArgumentException($"{parameter.Name} must be true or false.");
+                        throw new ArgumentException($"{parameter.Name} must be Yes or No (true or false).");
                     }
                     break;
                 case "Date":

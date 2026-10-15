@@ -1,4 +1,4 @@
 #!/bin/bash
 set -e
-pnpm install --frozen-lockfile
-pnpm --filter db push
+# Replit maintenance only. Never change schema or reseed user data automatically.
+dotnet restore LabDesk.sln --artifacts-path .cache/dotnet --nologo

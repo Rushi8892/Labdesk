@@ -1,0 +1,14 @@
+<header class="page-head no-print">
+  <div><h1>Results</h1><div class="page-sub" data-slot="sub">Loading worklist</div></div>
+  <div class="page-actions"><button class="btn btn-primary" data-act="new-result" data-testid="button-new-result" disabled><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> New result</button></div>
+</header>
+<div class="split">
+  <section class="col" style="width:400px;flex-shrink:0;border-right:1px solid hsl(var(--border))">
+    <div style="padding:12px;border-bottom:1px solid hsl(var(--border));display:flex;flex-direction:column;gap:8px">
+      <input class="input" data-f="search" placeholder="Search patient or test" data-testid="input-search-results">
+      <div class="row gap4 wrap" data-slot="filters"></div>
+    </div>
+    <div class="scroll flex-1" data-slot="list"></div>
+  </section>
+  <section style="flex:1;min-width:0;min-height:0" data-slot="entry"></section>
+</div>

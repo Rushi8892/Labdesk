@@ -12,26 +12,32 @@ public sealed class Repository
     private readonly string _provider;
     private readonly string _connectionString;
 
-    public Repository()
+    public Repository(IConfiguration configuration)
     {
-        _provider = string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("DB_PROVIDER"))
-            ? "PostgreSql"
-            : Environment.GetEnvironmentVariable("DB_PROVIDER")!;
+        // Existing PostgreSQL environment variables keep the temporary Replit
+        // database working without changing the SQL Server defaults for local use.
+        _provider = configuration["DB_PROVIDER"]
+            ?? (!string.IsNullOrWhiteSpace(configuration["DATABASE_URL"]) ||
+                !string.IsNullOrWhiteSpace(configuration["PGHOST"])
+                ? "PostgreSql"
+                : configuration["Database:Provider"] ?? "SqlServer");
 
         if (_provider.Equals("PostgreSql", StringComparison.OrdinalIgnoreCase))
         {
             _provider = "PostgreSql";
-            var configured = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
-                ?? Environment.GetEnvironmentVariable("DATABASE_URL");
-            _connectionString = string.IsNullOrWhiteSpace(configured)
-                ? BuildPgConnectionString()
-                : NormalizePgConnectionString(configured);
+            var configured = configuration["DB_CONNECTION_STRING"]
+                ?? configuration["DATABASE_URL"];
+            _connectionString = !string.IsNullOrWhiteSpace(configured)
+                ? NormalizePgConnectionString(configured)
+                : BuildPgConnectionString(configuration);
         }
         else if (_provider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
         {
             _provider = "SqlServer";
-            _connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
-                ?? throw new InvalidOperationException("DB_CONNECTION_STRING is required when DB_PROVIDER=SqlServer.");
+            _connectionString = configuration["DB_CONNECTION_STRING"]
+                ?? configuration.GetConnectionString("SqlServer")
+                ?? throw new InvalidOperationException(
+                    "Configure ConnectionStrings:SqlServer or DB_CONNECTION_STRING.");
         }
         else
         {
@@ -52,28 +58,23 @@ public sealed class Repository
         ? new SqlConnection(_connectionString)
         : new NpgsqlConnection(_connectionString);
 
-    private static string BuildPgConnectionString()
+    private static string BuildPgConnectionString(IConfiguration configuration)
     {
-        var host = Environment.GetEnvironmentVariable("PGHOST");
-        var database = Environment.GetEnvironmentVariable("PGDATABASE");
-        var user = Environment.GetEnvironmentVariable("PGUSER");
-        var password = Environment.GetEnvironmentVariable("PGPASSWORD");
-
-        if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(database) ||
-            string.IsNullOrWhiteSpace(user))
+        var configured = configuration.GetConnectionString("PostgreSql") ?? "";
+        var builder = new NpgsqlConnectionStringBuilder(NormalizePgConnectionString(configured));
+        if (configuration["PGHOST"] is { Length: > 0 } host) builder.Host = host;
+        if (configuration["PGDATABASE"] is { Length: > 0 } database) builder.Database = database;
+        if (configuration["PGUSER"] is { Length: > 0 } user) builder.Username = user;
+        if (configuration["PGPASSWORD"] is { } password) builder.Password = password;
+        if (configuration["PGPORT"] is { Length: > 0 } rawPort)
         {
-            return "";
+            if (!int.TryParse(rawPort, out var port) || port is < 1 or > 65535)
+            {
+                throw new InvalidOperationException("PGPORT must be an integer from 1 through 65535.");
+            }
+            builder.Port = port;
         }
-
-        return new NpgsqlConnectionStringBuilder
-        {
-            Host = host,
-            Port = int.TryParse(Environment.GetEnvironmentVariable("PGPORT"), out var port) ? port : 5432,
-            Database = database,
-            Username = user,
-            Password = password ?? "",
-            SslMode = SslMode.Prefer
-        }.ConnectionString;
+        return builder.ConnectionString;
     }
 
     private static string NormalizePgConnectionString(string value)
@@ -109,18 +110,12 @@ public sealed class Repository
         return builder.ConnectionString;
     }
 
-    public static async Task InitializeAsync(string provider, string scriptPath)
+    public async Task InitializeAsync(string scriptPath)
     {
-        var repository = new Repository();
-        if (!repository.Provider.Equals(provider, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException("DB_PROVIDER and requested schema provider do not match.");
-        }
-
         var script = await File.ReadAllTextAsync(scriptPath);
-        await using var connection = repository.NewConnection();
+        await using var connection = NewConnection();
         await connection.OpenAsync();
-        var batches = provider == "SqlServer"
+        var batches = _provider == "SqlServer"
             ? System.Text.RegularExpressions.Regex.Split(script,
                 @"^\s*GO\s*$",
                 System.Text.RegularExpressions.RegexOptions.Multiline |

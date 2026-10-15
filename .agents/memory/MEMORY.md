@@ -1,1 +1,2 @@
 - [Result and snapshot integrity](result-review-integrity.md) — keep the result flow to Draft and Completed, and preserve captured result metadata in reports.
+- [Native .NET preview routing](native-dotnet-preview.md) — a healthy non-artifact web workflow still needs explicit port forwarding.
