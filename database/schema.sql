@@ -1,14 +1,13 @@
 /*
-  LabDesk schema for an EXISTING SQL Server database (SQL Server 2016+).
-  Used by: dotnet run --project src/LabDesk.Api -- --initialize
-  For first-time database creation, use create-local-sqlserver.sql instead.
-  Re-running this file leaves existing tables and data intact.
+  SQL Server schema for LabDesk.
+  Connect to the target database before executing this script.
+  The application stores all metadata, results and snapshots in lab_entity;
+  lab_audit stores the audit trail. This intentionally uses the repository's
+  generic entity model rather than one table for each laboratory category.
 
-  All metadata, results and report snapshots are JSON payloads in lab_entity.
-  parent_id scopes Parameter codes to a Test and Option codes to a Parameter.
-  Reference versions use entity_kind='Reference', parent_id=Parameter id and
-  code_key='VERSION:<number>'. uq_lab_entity_code therefore enforces BOTH
-  code uniqueness within its parent and reference-version uniqueness.
+  Safe to run repeatedly: existing tables, rows and indexes are preserved.
+  Reference versions use code_key='VERSION:<number>' scoped to their parameter,
+  so uq_lab_entity_code also enforces reference-version uniqueness.
 */
 
 IF OBJECT_ID(N'dbo.lab_entity', N'U') IS NULL

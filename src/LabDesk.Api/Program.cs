@@ -15,23 +15,33 @@ builder.Configuration
 var repository = new Repository(builder.Configuration);
 if (args.Contains("--initialize"))
 {
-    var schemaName = repository.Provider == "SqlServer" ? "sqlserver.sql" : "postgresql.sql";
-    var schema = Path.Combine(AppContext.BaseDirectory, "database", schemaName);
-    var directory = new DirectoryInfo(Directory.GetCurrentDirectory());
-    while (!File.Exists(schema) && directory is not null)
+    if (repository.Provider == "SqlServer")
     {
-        schema = Path.Combine(directory.FullName, "database", schemaName);
-        directory = directory.Parent;
+        var databaseDirectory = Path.Combine(AppContext.BaseDirectory, "database");
+        var directory = new DirectoryInfo(Directory.GetCurrentDirectory());
+        while (!Directory.Exists(databaseDirectory) && directory is not null)
+        {
+            databaseDirectory = Path.Combine(directory.FullName, "database");
+            directory = directory.Parent;
+        }
+
+        var schema = Path.Combine(databaseDirectory, "schema.sql");
+        var seed = Path.Combine(databaseDirectory, "seed.sql");
+        if (!File.Exists(schema) || !File.Exists(seed))
+        {
+            throw new FileNotFoundException(
+                "Could not locate database/schema.sql and database/seed.sql. Keep both beside the executable.");
+        }
+
+        await repository.InitializeAsync(schema);
+        await repository.InitializeAsync(seed);
+    }
+    else
+    {
+        await repository.InitializePostgreSqlAsync();
+        await SeedCatalog.Seed(repository);
     }
 
-    if (!File.Exists(schema))
-    {
-        throw new FileNotFoundException(
-            "Could not locate database schema scripts. Keep the database folder beside the executable.");
-    }
-
-    await repository.InitializeAsync(schema);
-    await SeedCatalog.Seed(repository);
     Console.WriteLine($"Initialized {repository.Provider} schema and starter catalog.");
     return;
 }
