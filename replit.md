@@ -41,10 +41,16 @@ dynamic result entry and immutable printable completed reports.
   `DATABASE_URL`, `PG*`, `PORT`, and `ASPNETCORE_URLS`.
 - Without an explicit DB_PROVIDER, DATABASE_URL or PGHOST selects PostgreSQL to
   preserve the temporary Replit setup. Otherwise SQL Server is the default.
-- Use `database/create-local-sqlserver.sql` to create the local database.
-  Schema scripts are idempotent and contain the generic entity and audit tables.
-- Initialize schema and seed: `dotnet run --project src/LabDesk.Api -- --initialize`.
-  Never auto-reseed existing tests or reset lab data on normal startup.
+- The only SQL files are `database/schema.sql` and `database/seed.sql`.
+  The schema script is idempotent and defines the two generic repository tables:
+  `lab_entity` and `lab_audit`. Do not add category-specific tables.
+- Create the SQL Server database in SSMS, select it, then execute `schema.sql`
+  followed by `seed.sql`. The seed script matches the existing starter catalog
+  and leaves databases with tests untouched.
+- `dotnet run --project src/LabDesk.Api -- --initialize` applies both SQL files
+  for SQL Server. Temporary PostgreSQL development schema and starter data are
+  initialized by the repository/seeder code, so no extra SQL file is required.
+- Never auto-reseed existing tests or reset lab data on normal startup.
 - Start UI and API: `dotnet run --project src/LabDesk.Api`.
 - Default local address: `http://localhost:5000`; health is `/api/healthz`.
 - On Windows, open the default browser after startup unless disabled in settings.

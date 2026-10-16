@@ -23,29 +23,45 @@ The target computer does **not** need .NET installed when using the
 self-contained published executable. It still needs access to SQL Server;
 publishing does not bundle a database server or copy your database.
 
-### 2. Create the database
+### 2. Create the database, schema and starter catalog
 
-Connect to your SQL Server instance in Management Studio. Open and execute the
-**entire** `database/create-local-sqlserver.sql` file. It creates the
-`PathologyTests` database if missing, then its schema.
+Connect to SQL Server in Management Studio. Create an empty database named
+`PathologyTests` if it does not already exist:
+
+```sql
+IF DB_ID(N'PathologyTests') IS NULL
+    CREATE DATABASE [PathologyTests];
+```
+
+Select `PathologyTests` in SSMS, then open and execute these two files in order:
+
+1. `database/schema.sql` creates the two generic repository tables and indexes.
+   It uses existence checks, so it can be run again without dropping data.
+2. `database/seed.sql` inserts the starter categories, specimen types, tests
+   and parameters, including audit entries. It runs only when the database has
+   no tests; rerunning it won't overwrite a lab's catalog.
+
+There are two physical tables by design: `lab_entity` stores every configurable
+entity, parameter, result and snapshot; `lab_audit` stores the audit trail.
+Categories and test types do not each get a separate database table.
 
 For LocalDB, the instance name is `(localdb)\MSSQLLocalDB`. If `sqlcmd` is
-installed, the equivalent command is:
+installed, the equivalent commands are:
 
 ```powershell
-sqlcmd -S "(localdb)\MSSQLLocalDB" -E -b -i ".\database\create-local-sqlserver.sql"
+sqlcmd -S "(localdb)\MSSQLLocalDB" -E -b -Q "IF DB_ID(N'PathologyTests') IS NULL CREATE DATABASE [PathologyTests];"
+sqlcmd -S "(localdb)\MSSQLLocalDB" -d "PathologyTests" -E -b -i ".\database\schema.sql"
+sqlcmd -S "(localdb)\MSSQLLocalDB" -d "PathologyTests" -E -b -i ".\database\seed.sql"
 ```
 
 For SQL Server Express, use your instance name instead, for example
-`.\SQLEXPRESS`. The account running the script must have permission to create
-the database. If an administrator already created a database with another name,
-execute `database/sqlserver.sql` **inside that database** instead.
+`.\SQLEXPRESS`. The account creating the database needs permission to do so.
+If you use a different database name, create it and execute both files with that
+database selected.
 
-All three scripts in `database/` can be run repeatedly. They preserve data and
-check for existing tables and indexes. Primary keys and default constraints are
-created only when their table is first created. The unique scoped-code index
-also enforces reference-version uniqueness: reference records store
-`VERSION:<number>` as their code, scoped to their parameter.
+Alternatively, after creating the database and configuring the connection
+string, the application's `--initialize` command applies `schema.sql` and
+`seed.sql` automatically. Both files are safe to apply again.
 
 ### 3. Configure the connection
 
@@ -115,7 +131,7 @@ dotnet run --project .\src\LabDesk.Api\LabDesk.Api.csproj -- --initialize
 The initializer creates missing schema objects in the **configured, existing
 database**, then seeds the existing starter catalog if there are no tests.
 It does not overwrite an existing catalog, clear results, or reset lab settings.
-Database creation itself is handled by `create-local-sqlserver.sql`.
+The SQL Server schema and seed files can also be run directly in SSMS.
 
 The catalog remains laboratory-editable. Medical reference intervals must be
 entered and approved by the laboratory; the application must not invent them.
@@ -176,8 +192,9 @@ The `publish/` output is ignored by source control.
 
 1. Copy `publish/LabDesk/` to a writable folder on a supported **Windows x64**
    machine or server.
-2. Ensure SQL Server is installed or reachable, and create the database using
-   `database/create-local-sqlserver.sql` if it does not already exist.
+2. Ensure SQL Server is installed or reachable, and create the database if it
+   does not already exist. The shipped `database/schema.sql` and
+   `database/seed.sql` initialize its tables and starter catalog.
 3. Edit **the published folder's `appsettings.json`**. Replace `YOUR_SQL_SERVER`
    and set the correct database/authentication settings. Personal source
    settings are deliberately not published.
@@ -200,8 +217,9 @@ the required security controls and laboratory validation.
 
 The same repository layer supports `Database:Provider = PostgreSql` and
 `ConnectionStrings:PostgreSql`, as well as the environment overrides above.
-Connect to an existing database and run the same `--initialize` command; it
-selects `database/postgresql.sql`. SQL Server scripts are not run on PostgreSQL.
+Connect to an existing database and run the same `--initialize` command. The
+temporary PostgreSQL schema is initialized by the repository, then the existing
+C# starter-catalog seeder runs. The two distributed SQL files are for SQL Server.
 
 The managed Replit workflow starts the .NET project directly and supplies the
 listening port. Its PostgreSQL environment variables take precedence over the
@@ -251,9 +269,8 @@ replit.md
 publish.bat
 publish.ps1
 database/
-├── create-local-sqlserver.sql  # Creates PathologyTests and its schema
-├── sqlserver.sql              # Schema for an existing SQL Server database
-└── postgresql.sql             # Temporary development schema
+├── schema.sql                 # Idempotent SQL Server tables and indexes
+└── seed.sql                   # Idempotent SQL Server starter catalog
 docs/
 └── openapi.yaml               # API documentation
 scripts/
@@ -265,7 +282,7 @@ src/
     ├── appsettings.json
     ├── appsettings.Development.json
     ├── appsettings.Local.json # Optional, untracked personal settings
-    ├── Data/                 # ADO.NET repository and unchanged starter seed
+    ├── Data/                 # ADO.NET repository and temporary PostgreSQL seeder
     ├── Models/               # Request, response and domain records
     ├── Services/             # Validation, reference evaluation and snapshots
     └── wwwroot/
