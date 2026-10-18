@@ -25,3 +25,6 @@ appsettings.Local.json
 Thumbs.db
 .cache/
 .local/
+
+# Executor scratch (plan ledgers and briefs); git history is the record
+.superpowers/
