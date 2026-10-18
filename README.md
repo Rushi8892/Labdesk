@@ -35,15 +35,31 @@ IF DB_ID(N'PathologyTests') IS NULL
 
 Select `PathologyTests` in SSMS, then open and execute these two files in order:
 
-1. `database/schema.sql` creates the two generic repository tables and indexes.
-   It uses existence checks, so it can be run again without dropping data.
+1. `database/schema.sql` creates the tables and indexes. It uses existence
+   checks, so it can be run again without dropping data.
 2. `database/seed.sql` inserts the starter categories, specimen types, tests
-   and parameters, including audit entries. It runs only when the database has
+   and parameters, including audit entries. It runs only when the catalog has
    no tests; rerunning it won't overwrite a lab's catalog.
 
-There are two physical tables by design: `lab_entity` stores every configurable
-entity, parameter, result and snapshot; `lab_audit` stores the audit trail.
-Categories and test types do not each get a separate database table.
+Storage is one table per concept, with the relationships enforced by the
+database itself:
+
+| Table | Holds |
+| --- | --- |
+| `category`, `specimen`, `method` | the configurable masters |
+| `test` | the tests |
+| `test_parameter` | a test's parameters, including its one normal range |
+| `parameter_option` | the dropdown options a parameter allows |
+| `doctor`, `patient` | who the sample belongs to and who referred it |
+| `lab_result`, `result_value` | drafts and completed results |
+| `report_snapshot`, `report_line` | the frozen copy a completed report prints |
+| `lab_audit` | the audit trail |
+
+Databases created before this change also contain `lab_entity`, the older
+single-table JSON storage. Nothing reads it once the application has been
+switched over, and `database/drop-legacy.sql` removes it. That script refuses to
+run while the new `test` table is missing or empty, so it cannot destroy the only
+copy of a catalog.
 
 For LocalDB, the instance name is `(localdb)\MSSQLLocalDB`. If `sqlcmd` is
 installed, the equivalent commands are:
@@ -119,6 +135,28 @@ Compatibility overrides remain supported:
 
 SQL Server is the default when no PostgreSQL environment variables are present.
 Restart the application after changing configuration.
+
+### The laboratory letterhead
+
+The report header is read from the `Lab` section, so it can be overridden in any
+settings file:
+
+```json
+"Lab": {
+  "Name": "City Diagnostics",
+  "Address": "12 Station Road, Pune",
+  "Phone1": "+91 00000 00000",
+  "Phone2": "+91 00000 00000",
+  "Logo": "logo.png"
+}
+```
+
+`Lab:Logo` names a file inside `wwwroot`, so a new logo is a new image file
+copied into `wwwroot` plus this one setting. The default points at the mark that
+already ships with the application. The letterhead is read when a report is
+printed, so a report reprinted after a change shows the current letterhead, while
+the patient, the referring doctor and the dates are frozen into the report when
+it is completed.
 
 ### 4. Initialize and seed
 
@@ -258,6 +296,7 @@ static files when running from source; the project copies them into its output.
 | The browser does not open | Open the configured URL manually. Browser launch is Windows-only and can be disabled for servers. |
 | Native extraction/access error | Ensure the running account can write to its temporary directory; self-contained native libraries may be extracted there. |
 | Health works but catalog does not | The health endpoint checks the HTTP process, not database connectivity. Check initialization and database settings. |
+| The report shows the wrong laboratory name, address or phone | Check the `Lab` section of the published folder's `appsettings.json`. |
 | A reference is not shown | Check active/approved status, age/sex applicability, effective dates and matching units. Do not invent a replacement range. |
 
 ## Folder structure
@@ -270,7 +309,8 @@ publish.bat
 publish.ps1
 database/
 ├── schema.sql                 # Idempotent SQL Server tables and indexes
-└── seed.sql                   # Idempotent SQL Server starter catalog
+├── seed.sql                   # Idempotent SQL Server starter catalog
+└── drop-legacy.sql            # One-off removal of the old JSON table
 docs/
 └── openapi.yaml               # API documentation
 scripts/
