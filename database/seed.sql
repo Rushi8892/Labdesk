@@ -166,7 +166,16 @@ BEGIN
 
         INSERT INTO dbo.lab_audit (entity_name, entity_id, action_name, actor, details)
         SELECT seed.EntityName, seed.EntityId, 'created', 'seed', N'{"seed":true}'
-        FROM @SeedAudit AS seed;
+        FROM @SeedAudit AS seed
+        -- An upgraded database already credits these entities to 'seed' under
+        -- its own ids, so only credit what is not credited yet.
+        WHERE NOT EXISTS (
+            SELECT 1 FROM dbo.lab_audit AS existing
+            WHERE existing.entity_name = seed.EntityName
+              AND existing.entity_id = seed.EntityId
+              AND existing.action_name = 'created'
+              AND existing.actor = 'seed'
+        );
 
         COMMIT TRANSACTION;
     END TRY

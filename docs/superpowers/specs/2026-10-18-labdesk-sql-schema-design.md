@@ -311,7 +311,8 @@ Start clean, as agreed:
    against a clean database and checking row counts, foreign keys and the
    `Lab` configuration block.
 2. **Repository**: typed per-table data access; delete the generic entity model,
-   `SeedCatalog` and the PostgreSQL path.
+   `SeedCatalog` and the PostgreSQL path, and stop creating `lab_entity` in
+   `schema.sql` (otherwise `--initialize` keeps recreating a dead table).
 3. **Doctors and patients**: patients and doctors lists plus add/edit.
 4. **Tests, parameters, options and normal ranges**: drop price and the reference
    fields from the Test form; edit the range on the parameter row.

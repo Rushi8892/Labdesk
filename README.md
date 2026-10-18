@@ -57,17 +57,20 @@ database itself:
 
 Databases created before this change also contain `lab_entity`, the older
 single-table JSON storage. Nothing reads it once the application has been
-switched over, and `database/drop-legacy.sql` removes it. That script refuses to
-run while the new `test` table is missing or empty, so it cannot destroy the only
-copy of a catalog.
+switched over, and `database/drop-legacy.sql` removes it. Only the starter catalog
+is copied into the new tables, so that script destroys every result and report
+still held in `lab_entity` unless it is first told to go ahead: it refuses to run
+unless it is passed `-v ConfirmDrop=YES`. Until the switchover lands, a database
+created from scratch must also be seeded with the previous version's `seed.sql`,
+because today's `seed.sql` populates only the new tables.
 
 For LocalDB, the instance name is `(localdb)\MSSQLLocalDB`. If `sqlcmd` is
 installed, the equivalent commands are:
 
 ```powershell
 sqlcmd -S "(localdb)\MSSQLLocalDB" -E -b -Q "IF DB_ID(N'PathologyTests') IS NULL CREATE DATABASE [PathologyTests];"
-sqlcmd -S "(localdb)\MSSQLLocalDB" -d "PathologyTests" -E -b -i ".\database\schema.sql"
-sqlcmd -S "(localdb)\MSSQLLocalDB" -d "PathologyTests" -E -b -i ".\database\seed.sql"
+sqlcmd -S "(localdb)\MSSQLLocalDB" -d "PathologyTests" -E -b -I -i ".\database\schema.sql"
+sqlcmd -S "(localdb)\MSSQLLocalDB" -d "PathologyTests" -E -b -I -i ".\database\seed.sql"
 ```
 
 For SQL Server Express, use your instance name instead, for example
@@ -153,10 +156,11 @@ settings file:
 
 `Lab:Logo` names a file inside `wwwroot`, so a new logo is a new image file
 copied into `wwwroot` plus this one setting. The default points at the mark that
-already ships with the application. The letterhead is read when a report is
-printed, so a report reprinted after a change shows the current letterhead, while
-the patient, the referring doctor and the dates are frozen into the report when
-it is completed.
+already ships with the application. When the printed report is rebuilt it will
+read this section at print time, so a report reprinted after a change shows the
+current letterhead, while the patient, the referring doctor and the dates are
+frozen into the report when it is completed. Today's printed report does not show
+a letterhead yet.
 
 ### 4. Initialize and seed
 

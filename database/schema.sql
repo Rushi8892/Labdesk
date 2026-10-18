@@ -1,13 +1,17 @@
 /*
   SQL Server schema for LabDesk.
   Connect to the target database before executing this script.
-  The application stores all metadata, results and snapshots in lab_entity;
-  lab_audit stores the audit trail. This intentionally uses the repository's
-  generic entity model rather than one table for each laboratory category.
+
+  The laboratory data lives in the real tables created further down this file,
+  one per concept, with the relationships enforced by foreign keys. lab_audit
+  stores the audit trail.
+
+  lab_entity is the older single-table JSON storage. It is still created here
+  because the application still reads it; it goes away with the repository
+  switchover, and database/drop-legacy.sql removes it from existing databases.
+  No new data belongs in it.
 
   Safe to run repeatedly: existing tables, rows and indexes are preserved.
-  Reference versions use code_key='VERSION:<number>' scoped to their parameter,
-  so uq_lab_entity_code also enforces reference-version uniqueness.
 */
 
 IF OBJECT_ID(N'dbo.lab_entity', N'U') IS NULL

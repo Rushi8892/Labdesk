@@ -64,7 +64,7 @@ Constraints to include, named so failures are readable:
 - [ ] **Step 3: Apply the script and count the tables**
 
 ```powershell
-sqlcmd -S "(localdb)\MSSQLLocalDB" -d PathologyTests -E -b -i ".\database\schema.sql"
+sqlcmd -S "(localdb)\MSSQLLocalDB" -d PathologyTests -E -b -I -i ".\database\schema.sql"
 sqlcmd -S "(localdb)\MSSQLLocalDB" -d PathologyTests -E -Q "SELECT COUNT(*) AS created FROM sys.tables WHERE name IN ('doctor','patient','category','specimen','method','test','test_parameter','parameter_option','lab_result','result_value','report_snapshot','report_line')"
 ```
 
