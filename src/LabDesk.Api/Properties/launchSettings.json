@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "LabDesk.Api": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:55366;http://localhost:55367"
+    }
+  }
+}

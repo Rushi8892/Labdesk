@@ -4,9 +4,9 @@ A desktop-style diagnostic laboratory application built with ASP.NET Core and
 plain HTML, CSS and vanilla JavaScript. The same .NET process serves the UI and
 the `/api` endpoints on one port. Static files need no compilation.
 
-Data access uses **ADO.NET**, parameterized queries and a repository layer.
-Microsoft SQL Server is the final/local database. PostgreSQL is supported only
-as the temporary development database. There is no Entity Framework.
+Data access uses **ADO.NET**, parameterized queries, one repository per concept
+and a service layer that holds the rules. Microsoft SQL Server is the database.
+There is no Entity Framework.
 
 ## Run locally on Windows
 
@@ -48,21 +48,18 @@ database itself:
 | --- | --- |
 | `category`, `specimen`, `method` | the configurable masters |
 | `test` | the tests |
-| `test_parameter` | a test's parameters, including its one normal range |
+| `test_parameter` | a test's parameters, including the reference lines a report prints |
 | `parameter_option` | the dropdown options a parameter allows |
 | `doctor`, `patient` | who the sample belongs to and who referred it |
 | `lab_result`, `result_value` | drafts and completed results |
 | `report_snapshot`, `report_line` | the frozen copy a completed report prints |
 | `lab_audit` | the audit trail |
 
-Databases created before this change also contain `lab_entity`, the older
-single-table JSON storage. Nothing reads it once the application has been
-switched over, and `database/drop-legacy.sql` removes it. Only the starter catalog
-is copied into the new tables, so that script destroys every result and report
-still held in `lab_entity` unless it is first told to go ahead: it refuses to run
-unless it is passed `-v ConfirmDrop=YES`. Until the switchover lands, a database
-created from scratch must also be seeded with the previous version's `seed.sql`,
-because today's `seed.sql` populates only the new tables.
+`schema.sql` no longer creates `lab_entity`, the older single-table JSON storage;
+nothing reads it. A database created by an earlier version still holds it, and
+`database/drop-legacy.sql` removes it. That script destroys whatever results and
+reports were still held there, so it refuses to run unless it is passed
+`-v ConfirmDrop=YES`.
 
 For LocalDB, the instance name is `(localdb)\MSSQLLocalDB`. If `sqlcmd` is
 installed, the equivalent commands are:
@@ -96,9 +93,6 @@ Create `src/LabDesk.Api/appsettings.Local.json` for your machine:
 
 ```json
 {
-  "Database": {
-    "Provider": "SqlServer"
-  },
   "ConnectionStrings": {
     "SqlServer": "Server=(localdb)\\MSSQLLocalDB;Database=PathologyTests;Integrated Security=True;TrustServerCertificate=True;"
   },
@@ -124,19 +118,14 @@ Configuration loads in this order, with later settings taking precedence:
 3. Optional `appsettings.Local.json`
 4. Environment variables
 
-Compatibility overrides remain supported:
+Environment overrides remain supported:
 
-- `DB_PROVIDER` explicitly selects `SqlServer` or `PostgreSql`.
-- `DB_CONNECTION_STRING` overrides the selected provider's connection string.
-- `DATABASE_URL`, or `PGHOST` / `PGPORT` / `PGDATABASE` / `PGUSER` / `PGPASSWORD`,
-  configure PostgreSQL. Without an explicit `DB_PROVIDER`, `DATABASE_URL` or
-  `PGHOST` selects PostgreSQL so the temporary development environment still works.
+- `DB_CONNECTION_STRING` overrides the connection string.
 - `PORT` overrides the listening port and binds to all interfaces.
 - Otherwise `ASPNETCORE_URLS` overrides `Server:Url`.
 - Standard nested settings also support double-underscore environment names,
   such as `Browser__OpenOnStart=false`.
 
-SQL Server is the default when no PostgreSQL environment variables are present.
 Restart the application after changing configuration.
 
 ### The laboratory letterhead
@@ -156,11 +145,10 @@ settings file:
 
 `Lab:Logo` names a file inside `wwwroot`, so a new logo is a new image file
 copied into `wwwroot` plus this one setting. The default points at the mark that
-already ships with the application. When the printed report is rebuilt it will
-read this section at print time, so a report reprinted after a change shows the
-current letterhead, while the patient, the referring doctor and the dates are
-frozen into the report when it is completed. Today's printed report does not show
-a letterhead yet.
+already ships with the application. The API serves this section as `GET /api/lab`.
+It is read at print time, so a report reprinted after a change shows the current
+letterhead, while the patient, the referring doctor, the references and the dates
+were frozen into the report when it was completed.
 
 ### 4. Initialize and seed
 
@@ -175,8 +163,8 @@ database**, then seeds the existing starter catalog if there are no tests.
 It does not overwrite an existing catalog, clear results, or reset lab settings.
 The SQL Server schema and seed files can also be run directly in SSMS.
 
-The catalog remains laboratory-editable. Medical reference intervals must be
-entered and approved by the laboratory; the application must not invent them.
+The catalog remains laboratory-editable. Each parameter carries its own reference
+lines, which the laboratory enters; the application must not invent one.
 
 ### 5. Start the application
 
@@ -255,37 +243,30 @@ The existing single-laboratory workbench does not provide authenticated accounts
 or authorization; do not expose it publicly or use real patient data without
 the required security controls and laboratory validation.
 
-## Temporary PostgreSQL development environment
-
-The same repository layer supports `Database:Provider = PostgreSql` and
-`ConnectionStrings:PostgreSql`, as well as the environment overrides above.
-Connect to an existing database and run the same `--initialize` command. The
-temporary PostgreSQL schema is initialized by the repository, then the existing
-C# starter-catalog seeder runs. The two distributed SQL files are for SQL Server.
-
-The managed Replit workflow starts the .NET project directly and supplies the
-listening port. Its PostgreSQL environment variables take precedence over the
-local SQL Server examples. No hosted data is required for the code handoff.
-
 ## Behavior and maintenance
 
 - One configurable engine handles every test category.
-- Test and parameter codes remain scoped and unique as before.
-- Results have only **Draft** and **Completed** states. Completion locks the
-  result and stores its report snapshot in the same operation.
-- No patient codes, result contexts, result comments, or per-parameter status
-  fields are used in result entry.
-- Reference selection uses age and sex, with the existing general fallback.
-- Completed reports read their stored values, labels, units, ranges and flags;
+- Codes are unique in their scope: a test code across tests, a parameter code
+  within its test, an option code within its parameter.
+- A patient is recorded first, with an optional referring doctor. A result then
+  points at that patient and at a test.
+- A parameter prints one or more reference lines, held in `normal_ranges` as a
+  JSON array of strings, so sex or age bands are simply extra lines
+  (`["Male: 65-176 ug/dL", "Female: 26-170 ug/dL"]`). Nothing compares a result
+  against them, so no result carries a flag.
+- Results have only **Draft** and **Completed** states. Completion validates the
+  required values and stores the report snapshot in the same transaction. A
+  completed result cannot be edited or saved again.
+- No patient codes, result contexts, result comments, flags, reference approval,
+  or verifier/releaser steps exist.
+- Completed reports print their stored values, labels, units and reference lines;
   later catalog edits do not alter them.
-- Reference approval is separate from results. Results need no verification
-  or release step.
-- Configuration is deactivated rather than hard-deleted. Important changes
-  remain audited.
+- Configuration is deactivated rather than hard-deleted, and every save is
+  audited with the row before and after the change.
 
 Build the solution with `dotnet build LabDesk.sln`. Rebuild/restart after editing
 static files when running from source; the project copies them into its output.
-`docs/openapi.yaml` documents the unchanged API contract.
+`docs/openapi.yaml` documents the API contract.
 
 ## Troubleshooting
 
@@ -293,32 +274,29 @@ static files when running from source; the project copies them into its output.
 | --- | --- |
 | `net10.0` is not supported | Install the .NET 10 **SDK**, not only a runtime. Check `dotnet --version`. |
 | Database login/connection fails | Check the instance is running, the database exists, and the connection string uses the correct Windows identity or login. |
-| The wrong database provider is selected | Check `DB_PROVIDER`, `DATABASE_URL` and `PG*` environment variables; they override file settings. |
-| `lab_entity` or `lab_audit` does not exist | Run the create-database script, then `--initialize` against the same configured database. |
+| `lab_audit` (or another table) does not exist | Run the create-database script, then `--initialize` against the same configured database. |
 | The port is already in use | Stop the other process or change `Server:Url`; check for a `PORT` override. |
 | UI is missing in a copied folder | Copy all of `wwwroot/` with the executable. Do not move only the `.exe`. |
 | The browser does not open | Open the configured URL manually. Browser launch is Windows-only and can be disabled for servers. |
 | Native extraction/access error | Ensure the running account can write to its temporary directory; self-contained native libraries may be extracted there. |
 | Health works but catalog does not | The health endpoint checks the HTTP process, not database connectivity. Check initialization and database settings. |
 | The report shows the wrong laboratory name, address or phone | Check the `Lab` section of the published folder's `appsettings.json`. |
-| A reference is not shown | Check active/approved status, age/sex applicability, effective dates and matching units. Do not invent a replacement range. |
+| The report shows the wrong reference lines | Check the parameter's `normal_ranges` on the test. Do not invent a replacement range. |
 
 ## Folder structure
 
 ```text
 LabDesk.sln
 README.md
-replit.md
 publish.bat
 publish.ps1
 database/
 ├── schema.sql                 # Idempotent SQL Server tables and indexes
 ├── seed.sql                   # Idempotent SQL Server starter catalog
+├── migrate-normal-ranges.sql  # One-off upgrade of an older database
 └── drop-legacy.sql            # One-off removal of the old JSON table
 docs/
 └── openapi.yaml               # API documentation
-scripts/
-└── post-merge.sh              # Replit dependency restoration only
 src/
 └── LabDesk.Api/
     ├── LabDesk.Api.csproj
@@ -326,9 +304,9 @@ src/
     ├── appsettings.json
     ├── appsettings.Development.json
     ├── appsettings.Local.json # Optional, untracked personal settings
-    ├── Data/                 # ADO.NET repository and temporary PostgreSQL seeder
+    ├── Data/                 # ADO.NET plumbing and one repository per concept
     ├── Models/               # Request, response and domain records
-    ├── Services/             # Validation, reference evaluation and snapshots
+    ├── Services/             # The rules: validation, reports, snapshots
     └── wwwroot/
         ├── index.html
         ├── css/

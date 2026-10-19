@@ -4,9 +4,8 @@
   starter catalog is left untouched.
 
   Only the existing starter categories, specimens, tests, parameters, types and
-  units are seeded. No normal ranges and no dropdown options are invented or
-  approved: every normal_lower, normal_upper and normal_text stays NULL until the
-  laboratory enters and approves its own ranges.
+  units are seeded. No reference lines and no dropdown options are invented or
+  approved: every normal_ranges stays NULL until the laboratory enters its own.
 */
 
 SET XACT_ABORT ON;

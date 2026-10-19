@@ -2,52 +2,15 @@
   SQL Server schema for LabDesk.
   Connect to the target database before executing this script.
 
-  The laboratory data lives in the real tables created further down this file,
-  one per concept, with the relationships enforced by foreign keys. lab_audit
-  stores the audit trail.
+  One table per concept, with the relationships enforced by foreign keys.
+  lab_audit holds the audit trail; report_snapshot and report_line hold the
+  frozen copy a completed report prints.
 
-  lab_entity is the older single-table JSON storage. It is still created here
-  because the application still reads it; it goes away with the repository
-  switchover, and database/drop-legacy.sql removes it from existing databases.
-  No new data belongs in it.
+  A database created by an older version also holds lab_entity, the retired
+  single-table JSON storage. Nothing reads it; database/drop-legacy.sql removes it.
 
   Safe to run repeatedly: existing tables, rows and indexes are preserved.
 */
-
-IF OBJECT_ID(N'dbo.lab_entity', N'U') IS NULL
-BEGIN
-    CREATE TABLE dbo.lab_entity (
-        id INT IDENTITY(1,1) NOT NULL CONSTRAINT pk_lab_entity PRIMARY KEY,
-        entity_kind VARCHAR(40) NOT NULL,
-        parent_id INT NOT NULL CONSTRAINT df_lab_entity_parent DEFAULT 0,
-        code_key VARCHAR(255) NULL,
-        is_active BIT NOT NULL CONSTRAINT df_lab_entity_active DEFAULT 1,
-        payload NVARCHAR(MAX) NOT NULL,
-        created_at DATETIME2 NOT NULL CONSTRAINT df_lab_entity_created DEFAULT SYSUTCDATETIME(),
-        updated_at DATETIME2 NOT NULL CONSTRAINT df_lab_entity_updated DEFAULT SYSUTCDATETIME()
-    );
-END
-GO
-
-IF NOT EXISTS (
-    SELECT 1 FROM sys.indexes
-    WHERE name = N'uq_lab_entity_code' AND object_id = OBJECT_ID(N'dbo.lab_entity')
-)
-BEGIN
-    CREATE UNIQUE INDEX uq_lab_entity_code
-        ON dbo.lab_entity(entity_kind, parent_id, code_key)
-        WHERE code_key IS NOT NULL;
-END
-GO
-
-IF NOT EXISTS (
-    SELECT 1 FROM sys.indexes
-    WHERE name = N'ix_lab_entity_parent' AND object_id = OBJECT_ID(N'dbo.lab_entity')
-)
-BEGIN
-    CREATE INDEX ix_lab_entity_parent ON dbo.lab_entity(entity_kind, parent_id);
-END
-GO
 
 IF OBJECT_ID(N'dbo.lab_audit', N'U') IS NULL
 BEGIN
@@ -69,10 +32,10 @@ GO
    in lab_entity. lab_entity is kept until the application is switched
    over and is then removed by database/drop-legacy.sql.
 
-   shortcut: one normal range per parameter, no sex or age bands.
-   Male/female hemoglobin and creatinine differences cannot be expressed.
-   Upgrade by adding normal_lower_male / normal_upper_male, or by promoting
-   the range back to its own table, when a laboratory needs it.
+   A parameter's references are free text: normal_ranges holds a JSON array of
+   the lines its row prints, so "Male: 65-176" and "Female: 26-170" are simply
+   two entries on one parameter. Nothing compares a result against them and so
+   no table carries a flag: the laboratory reads the printed line.
 
    Every block is existence-checked, so this file can be run repeatedly.
    ===================================================================== */
@@ -182,17 +145,16 @@ BEGIN
         allow_negative BIT NOT NULL CONSTRAINT df_parameter_allow_negative DEFAULT 0,
         technical_min DECIMAL(18,4) NULL,
         technical_max DECIMAL(18,4) NULL,
-        -- The parameter's one normal range. NULL means "Not configured".
-        normal_lower DECIMAL(18,4) NULL,
-        normal_upper DECIMAL(18,4) NULL,
-        normal_text NVARCHAR(200) NULL,
+        -- The lines this parameter's row prints, one entry per printed line.
+        -- NULL means "Not configured".
+        normal_ranges NVARCHAR(MAX) NULL,
         display_order INT NOT NULL CONSTRAINT df_parameter_order DEFAULT 0,
         active BIT NOT NULL CONSTRAINT df_parameter_active DEFAULT 1,
         notes NVARCHAR(1000) NULL,
         CONSTRAINT uq_test_parameter_test_code UNIQUE (test_id, code),
         CONSTRAINT fk_test_parameter_test FOREIGN KEY (test_id) REFERENCES dbo.test(id),
-        CONSTRAINT ck_test_parameter_normal_bounds
-            CHECK (normal_lower IS NULL OR normal_upper IS NULL OR normal_lower <= normal_upper),
+        CONSTRAINT ck_test_parameter_ranges_json
+            CHECK (normal_ranges IS NULL OR ISJSON(normal_ranges) = 1),
         CONSTRAINT ck_test_parameter_data_type
             CHECK (data_type IN ('Numeric', 'Text', 'Dropdown', 'Boolean', 'Date'))
     );
@@ -207,7 +169,6 @@ BEGIN
         code VARCHAR(40) NOT NULL,
         label NVARCHAR(200) NOT NULL,
         sort_order INT NOT NULL CONSTRAINT df_option_order DEFAULT 0,
-        abnormal BIT NOT NULL CONSTRAINT df_option_abnormal DEFAULT 0,
         active BIT NOT NULL CONSTRAINT df_option_active DEFAULT 1,
         CONSTRAINT uq_parameter_option_parameter_code UNIQUE (parameter_id, code),
         CONSTRAINT fk_parameter_option_parameter
@@ -241,10 +202,12 @@ BEGIN
         result_id INT NOT NULL,
         parameter_id INT NOT NULL,
         value NVARCHAR(200) NULL,
-        flag VARCHAR(20) NULL,
-        -- The range text as evaluated for this value.
-        normal_text NVARCHAR(200) NULL,
+        -- The lines the parameter showed when this value was saved, so a
+        -- completed result prints what was configured then.
+        normal_ranges NVARCHAR(MAX) NULL,
         CONSTRAINT uq_result_value_result_parameter UNIQUE (result_id, parameter_id),
+        CONSTRAINT ck_result_value_ranges_json
+            CHECK (normal_ranges IS NULL OR ISJSON(normal_ranges) = 1),
         CONSTRAINT fk_result_value_result FOREIGN KEY (result_id)
             REFERENCES dbo.lab_result(id) ON DELETE CASCADE,
         CONSTRAINT fk_result_value_parameter FOREIGN KEY (parameter_id)
@@ -285,10 +248,12 @@ BEGIN
         code VARCHAR(40) NOT NULL,
         unit NVARCHAR(40) NULL,
         value NVARCHAR(200) NULL,
-        normal_text NVARCHAR(200) NULL,
-        flag VARCHAR(20) NULL,
+        -- Frozen with the report, exactly as entered on the parameter.
+        normal_ranges NVARCHAR(MAX) NULL,
         option_label NVARCHAR(200) NULL,
         display_order INT NOT NULL CONSTRAINT df_report_line_order DEFAULT 0,
+        CONSTRAINT ck_report_line_ranges_json
+            CHECK (normal_ranges IS NULL OR ISJSON(normal_ranges) = 1),
         CONSTRAINT fk_report_line_snapshot FOREIGN KEY (snapshot_id)
             REFERENCES dbo.report_snapshot(id) ON DELETE CASCADE
     );

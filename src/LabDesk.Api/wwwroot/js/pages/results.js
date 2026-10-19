@@ -34,14 +34,21 @@ export function mount(root) {
         <td>${pill(statusTone(r.status), r.status)}</td></tr>`)}</tbody></table>`);
 
     const current = typeof sel === 'number' ? data?.find((r) => r.id === sel) : undefined;
-    const show = ix && sel !== null && (sel === 'new' || current);
+    const ready = !!state.patients.data;
+    const show = ix && ready && sel !== null && (sel === 'new' || current);
     const key = !show ? 'none' : sel === 'new' ? 'new' : `${current.id}-${current.status}-${current.updatedAt ?? ''}`;
     if (key === entryKey) return;
     entryKey = key;
     if (entry) entry.destroy();
     entry = null;
     const host = $('[data-slot="entry"]');
-    if (!show) { setHTML(host, empty('Select a result or start a new one', 'Fields, validation and reference intervals are generated from the test configuration.')); return; }
+    if (!show) {
+      // A result names a registered patient, so entry waits for the register.
+      if (sel !== null && state.patients.error) setHTML(host, errorBlock('the patient list'));
+      else if (sel !== null && !ready) setHTML(host, empty('Loading patients\u2026', 'A result is entered against a patient from the register.'));
+      else setHTML(host, empty('Select a result or start a new one', 'Fields, validation and normal ranges come from the test configuration.'));
+      return;
+    }
     const fresh = document.createElement('div');
     fresh.style.height = '100%';
     host.replaceChildren(fresh);
@@ -52,11 +59,12 @@ export function mount(root) {
     'new-result': () => { if (state.catalog.ix) { sel = 'new'; update(); } },
     status: (el) => { status = el.dataset.st; update(); },
     sel: (el) => { sel = Number(el.dataset.id); update(); },
-    retry: () => load('results'),
+    retry: () => { if (state.patients.error) load('patients'); else load('results'); },
   });
   $('[data-f="search"]').addEventListener('input', (e) => { search = e.target.value; update(); });
   load('results');
   load('catalog');
+  load('patients');
   update();
   return { update, destroy() { off(); if (entry) entry.destroy(); } };
 }

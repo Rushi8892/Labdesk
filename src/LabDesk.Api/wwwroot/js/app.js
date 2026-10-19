@@ -5,13 +5,13 @@ import { html, setHTML, errorBlock } from './dom.js';
 const routes = [
   [/^\/$/, 'tests'],
   [/^\/tests\/([^/]+)$/, 'test-detail', ['id']],
+  [/^\/patients$/, 'patients'],
   [/^\/results$/, 'results'],
   [/^\/reports$/, 'reports'],
   [/^\/masters$/, 'masters'],
-  [/^\/references$/, 'references'],
   [/^\/audit$/, 'audit'],
 ];
-const navMatch = { tests: ['tests', 'test-detail'], results: ['results'], reports: ['reports'], masters: ['masters'], references: ['references'], audit: ['audit'] };
+const navMatch = { tests: ['tests', 'test-detail'], patients: ['patients'], results: ['results'], reports: ['reports'], masters: ['masters'], audit: ['audit'] };
 
 const main = document.getElementById('main');
 const fragCache = new Map();
@@ -69,8 +69,6 @@ function updateShell() {
   set('text-count-test-catalog', cat ? cat.tests.length : undefined);
   const open = (res ?? []).filter((r) => r.status === 'Draft').length;
   set('text-count-results', open || undefined);
-  const un = (cat?.references ?? []).filter((r) => !r.approvedBy).length;
-  set('text-count-references', un || undefined);
   const h = state.health;
   const ok = !!h.data?.status && !h.error;
   document.getElementById('health-dot').className = `dot ${ok ? 'ok' : h.loading || (!h.data && !h.error) ? '' : 'bad'}`;

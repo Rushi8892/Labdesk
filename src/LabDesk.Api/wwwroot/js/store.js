@@ -3,8 +3,11 @@ import { indexCatalog, msg } from './lab.js';
 import { toast } from './dom.js';
 
 const mk = () => ({ data: null, error: null, loading: false, seq: 0 });
-export const state = { catalog: mk(), results: mk(), audit: mk(), health: mk() };
-const loaders = { catalog: api.catalog, results: api.results, audit: api.audit, health: api.health };
+export const state = { catalog: mk(), results: mk(), patients: mk(), doctors: mk(), audit: mk(), health: mk() };
+const loaders = {
+  catalog: api.catalog, results: api.results, patients: api.patients, doctors: api.doctors,
+  audit: api.audit, health: api.health,
+};
 const subs = new Set();
 export const subscribe = (fn) => { subs.add(fn); return () => subs.delete(fn); };
 const emit = () => subs.forEach((fn) => { try { fn(); } catch (e) { console.error(e); } });
@@ -28,11 +31,12 @@ export async function load(key) {
   emit();
 }
 
-export const ix = () => state.catalog.ix;
-
 export function reloadAll() {
   const keys = ['catalog', 'results'];
-  if (state.audit.data || state.audit.error) keys.push('audit');
+  // Only refresh a list some page has already asked for; health never.
+  for (const key of ['patients', 'doctors', 'audit']) {
+    if (state[key].data || state[key].error) keys.push(key);
+  }
   return Promise.all(keys.map(load));
 }
 
@@ -46,8 +50,4 @@ export async function mutate(fn) {
     toast('Request failed', msg(e), true);
     throw e;
   }
-}
-
-export function operator() {
-  try { return localStorage.getItem('labdesk.operator') ?? ''; } catch { return ''; }
 }

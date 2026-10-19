@@ -174,8 +174,6 @@ svg.ic { flex-shrink: 0; }
 .aside-sec:last-child { border-bottom: 0; }
 .aside-sec .hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .dash { font-size: 12px; padding: 12px; border-radius: var(--radius); border: 1px dashed hsl(var(--border)); }
-.refcards { display: flex; flex-direction: column; gap: 8px; }
-.refcard { padding: 12px; }
 .tabs { display: flex; gap: 4px; padding: 12px 24px 0; border-bottom: 1px solid hsl(var(--border)); }
 .tab { padding: 8px 12px; font-weight: 600; font-size: 12.5px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; background: none; cursor: pointer; color: hsl(var(--muted-foreground)); }
 .tab.on { border-color: hsl(var(--primary)); color: hsl(var(--foreground)); }
@@ -186,7 +184,7 @@ svg.ic { flex-shrink: 0; }
 .entry-body { flex: 1; padding: 16px 24px; display: flex; flex-direction: column; gap: 16px; }
 .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .prow { padding: 12px; }
-.prow-grid { display: grid; grid-template-columns: 1.1fr 1.2fr 1.2fr 130px; gap: 12px; align-items: center; }
+.prow-grid { display: grid; grid-template-columns: 1.1fr 1.2fr 1.2fr; gap: 12px; align-items: center; }
 .req { color: hsl(var(--primary)); }
 .entry-foot { border-top: 1px solid hsl(var(--border)); padding: 12px 24px; background: hsl(var(--card)); }
 .errlist { font-size: 12px; margin: 0 0 8px; padding-left: 16px; color: hsl(var(--bad)); }

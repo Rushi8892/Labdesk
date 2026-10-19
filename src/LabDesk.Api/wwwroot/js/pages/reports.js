@@ -40,10 +40,13 @@ export function mount(root) {
         <div>Age / sex: <b>${r.age} y \u00b7 ${r.sex}</b></div><div>Collected: <b>${fmtDate(r.collectedAt)}</b></div>
         <div>Completed: <b>${fmtDate(r.completedAt)}</b></div>
       </div>
-      <table class="rs-tbl"><thead><tr>${['Parameter', 'Result', 'Unit', 'Reference', 'Flag'].map((h) => html`<th>${h}</th>`)}</tr></thead>
-        <tbody>${(r.lines || []).map((l) => html`<tr data-testid="report-line-${l.parameterId}">
-          <td><b>${l.name}</b></td><td class="mono">${l.optionLabel || l.value}</td><td class="mono">${l.unit}</td>
-          <td class="mono">${l.referenceText}</td><td class="sb">${l.flag}</td></tr>`)}</tbody></table>
+      <table class="rs-tbl"><thead><tr>${['Parameter', 'Result', 'Reference / normal ranges', 'Unit'].map((h) => html`<th>${h}</th>`)}</tr></thead>
+        <tbody>${(r.lines || []).map((l, i) => html`<tr data-testid="report-line-${i}">
+          <td><b>${l.name}</b></td><td class="mono">${l.optionLabel || l.value}</td>
+          <td class="mono" data-testid="report-line-ranges-${i}">${(l.normalRanges ?? []).length
+            ? html`${l.normalRanges.map((line, n) => html`<div data-testid="report-line-ranges-${i}-${n}">${line}</div>`)}`
+            : html`<div class="muted">Not configured</div>`}</td>
+          <td class="mono">${l.unit}</td></tr>`)}</tbody></table>
     </article>`);
   }
 
