@@ -3,10 +3,10 @@ import { indexCatalog, msg } from './lab.js';
 import { toast } from './dom.js';
 
 const mk = () => ({ data: null, error: null, loading: false, seq: 0 });
-export const state = { catalog: mk(), results: mk(), patients: mk(), doctors: mk(), audit: mk(), health: mk() };
+export const state = { catalog: mk(), results: mk(), patients: mk(), doctors: mk(), audit: mk(), health: mk(), lab: mk() };
 const loaders = {
   catalog: api.catalog, results: api.results, patients: api.patients, doctors: api.doctors,
-  audit: api.audit, health: api.health,
+  audit: api.audit, health: api.health, lab: api.lab,
 };
 const subs = new Set();
 export const subscribe = (fn) => { subs.add(fn); return () => subs.delete(fn); };

@@ -58,7 +58,8 @@ public record Catalog(List<Test> Tests, List<TestParameter> Parameters, List<Par
 
 // The laboratory's own letterhead, read from configuration rather than stored as
 // laboratory data. Logo names a file inside wwwroot.
-public record LabSettings(string Name, string Address, string Phone1, string Phone2, string? Logo);
+public record LabSettings(string Name, string Address, string Phone1, string Phone2, string? Logo,
+    string? Tagline);
 
 // What a writer hands the audit trail, and what the report page prints.
 public record AuditNote(string Action, string Details);

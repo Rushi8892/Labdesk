@@ -135,17 +135,20 @@ settings file:
 
 ```json
 "Lab": {
-  "Name": "City Diagnostics",
-  "Address": "12 Station Road, Pune",
-  "Phone1": "+91 00000 00000",
-  "Phone2": "+91 00000 00000",
-  "Logo": "logo.png"
+  "Name": "G.S. LAB",
+  "Tagline": "Accurate · Reliable · Trusted",
+  "Address": "Pathan Hospital, Near Veershaliv Bank, Hulgeshwari Road, Chikkaranji",
+  "Phone1": "9370154709",
+  "Phone2": "7499404630",
+  "Logo": "img/gs-lab-mark.svg"
 }
 ```
 
 `Lab:Logo` names a file inside `wwwroot`, so a new logo is a new image file
-copied into `wwwroot` plus this one setting. The default points at the mark that
-already ships with the application. The API serves this section as `GET /api/lab`.
+copied into `wwwroot` plus this one setting. The shipped mark is the vector
+G.S. Lab logo at `wwwroot/img/gs-lab-mark.svg` (the same art as `favicon.svg`,
+simplified for a 16 px tab icon). `Lab:Tagline` is optional and hidden when
+empty. The API serves this section as `GET /api/lab`.
 It is read at print time, so a report reprinted after a change shows the current
 letterhead, while the patient, the referring doctor, the references and the dates
 were frozen into the report when it was completed.
@@ -261,6 +264,8 @@ the required security controls and laboratory validation.
   or verifier/releaser steps exist.
 - Completed reports print their stored values, labels, units and reference lines;
   later catalog edits do not alter them.
+- A patient's page lists every test they have had; saving there bundles all of that
+  patient's completed reports into one PDF, one report per page.
 - Configuration is deactivated rather than hard-deleted, and every save is
   audited with the row before and after the change.
 

@@ -22,7 +22,7 @@ export function mount(root) {
           <td class="mono">${p.phone || '\u2014'}</td>
           <td>${p.doctorName || '\u2014'}</td>
           <td>${pill(p.active ? 'pill-ok' : '', p.active ? 'Active' : 'Inactive')}</td>
-          <td class="right nowrap"><button class="btn btn-sm" data-act="edit" data-id="${p.id}" data-testid="button-edit-patient-${p.id}">Edit</button></td>
+          <td class="right nowrap"><a class="btn btn-sm" href="#/patients/${p.id}" data-testid="button-view-patient-${p.id}">View</a> <button class="btn btn-sm" data-act="edit" data-id="${p.id}" data-testid="button-edit-patient-${p.id}">Edit</button></td>
         </tr>`)}</tbody></table>` : ''}`);
   }
 

@@ -6,12 +6,13 @@ const routes = [
   [/^\/$/, 'tests'],
   [/^\/tests\/([^/]+)$/, 'test-detail', ['id']],
   [/^\/patients$/, 'patients'],
+  [/^\/patients\/([^/]+)$/, 'patient-detail', ['id']],
   [/^\/results$/, 'results'],
   [/^\/reports$/, 'reports'],
   [/^\/masters$/, 'masters'],
   [/^\/audit$/, 'audit'],
 ];
-const navMatch = { tests: ['tests', 'test-detail'], patients: ['patients'], results: ['results'], reports: ['reports'], masters: ['masters'], audit: ['audit'] };
+const navMatch = { tests: ['tests', 'test-detail'], patients: ['patients', 'patient-detail'], results: ['results'], reports: ['reports'], masters: ['masters'], audit: ['audit'] };
 
 const main = document.getElementById('main');
 const fragCache = new Map();

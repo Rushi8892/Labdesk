@@ -67,7 +67,8 @@ builder.Services.AddSingleton(new LabSettings(
     builder.Configuration["Lab:Address"] ?? string.Empty,
     builder.Configuration["Lab:Phone1"] ?? string.Empty,
     builder.Configuration["Lab:Phone2"] ?? string.Empty,
-    builder.Configuration["Lab:Logo"] ?? "favicon.svg"));
+    builder.Configuration["Lab:Logo"] ?? "img/gs-lab-mark.svg",
+    builder.Configuration["Lab:Tagline"]));
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {

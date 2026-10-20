@@ -79,4 +79,5 @@ export function validateValue(p, value, opts) {
   return null;
 }
 
-export const statusTone = (s) => (s === 'Completed' ? 'pill-ok' : '');
+// Amber marks work that is not finished, so a draft is obvious in the worklist.
+export const statusTone = (s) => (s === 'Completed' ? 'pill-ok' : 'pill-warn');

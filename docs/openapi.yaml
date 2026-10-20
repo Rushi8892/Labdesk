@@ -265,12 +265,16 @@ components:
       required: [name, address, phone1, phone2]
       properties:
         name: { type: string }
+        tagline:
+          type: string
+          nullable: true
+          description: Optional line under the laboratory name on the report
         address: { type: string }
         phone1: { type: string }
         phone2: { type: string }
         logo:
           type: string
-          description: File name inside wwwroot, for example logo.png
+          description: File name inside wwwroot, for example img/gs-lab-mark.svg
     Master:
       type: object
       required: [id, code, name, active]

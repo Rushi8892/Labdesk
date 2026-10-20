@@ -23,6 +23,7 @@ async function req(method, url, body) {
 
 export const api = {
   health: () => req('GET', '/api/healthz'),
+  lab: () => req('GET', '/api/lab'),
   catalog: () => req('GET', '/api/catalog'),
   results: () => req('GET', '/api/results'),
   audit: () => req('GET', '/api/audit'),
