@@ -2,6 +2,7 @@ import { state, load } from '../store.js';
 import { api } from '../api.js';
 import { html, setHTML, skeleton, empty, errorBlock, onAct } from '../dom.js';
 import { fmtDate } from '../lab.js';
+import { reportSheet } from '../report-sheet.js';
 
 export function mount(root) {
   const $ = (s) => root.querySelector(s);
@@ -33,18 +34,7 @@ export function mount(root) {
     if (rep.loading) return setHTML(host, skeleton(10));
     if (rep.error) return setHTML(host, errorBlock('the report snapshot', 'retry-report'));
     if (!r) return setHTML(host, '');
-    setHTML(host, html`<article class="report-sheet pop" data-testid="report-sheet">
-      <div class="rs-top"><h2>${r.reportTitle || r.testName}</h2><div class="mono right">${r.testCode}<br>Result #${r.resultId}</div></div>
-      <div class="rs-meta">
-        <div>Patient: <b>${r.patientName}</b></div><div>Test: <b>${r.testName}</b></div>
-        <div>Age / sex: <b>${r.age} y \u00b7 ${r.sex}</b></div><div>Collected: <b>${fmtDate(r.collectedAt)}</b></div>
-        <div>Completed: <b>${fmtDate(r.completedAt)}</b></div>
-      </div>
-      <table class="rs-tbl"><thead><tr>${['Parameter', 'Result', 'Unit', 'Reference', 'Flag'].map((h) => html`<th>${h}</th>`)}</tr></thead>
-        <tbody>${(r.lines || []).map((l) => html`<tr data-testid="report-line-${l.parameterId}">
-          <td><b>${l.name}</b></td><td class="mono">${l.optionLabel || l.value}</td><td class="mono">${l.unit}</td>
-          <td class="mono">${l.referenceText}</td><td class="sb">${l.flag}</td></tr>`)}</tbody></table>
-    </article>`);
+    setHTML(host, reportSheet(r, state.lab.data || {}));
   }
 
   function update() {
@@ -69,6 +59,7 @@ export function mount(root) {
   });
   $('[data-f="search"]').addEventListener('input', (e) => { search = e.target.value; update(); });
   load('results');
+  load('lab').then(renderReport);
   update();
   renderReport();
   return { update, destroy: off };

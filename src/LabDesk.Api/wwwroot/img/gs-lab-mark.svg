@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 152" role="img" aria-label="G.S. Lab">
+  <defs>
+    <linearGradient id="ring" x1="16" y1="24" x2="104" y2="146" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e01e5a"/>
+      <stop offset=".36" stop-color="#8e24aa"/>
+      <stop offset=".68" stop-color="#1565c0"/>
+      <stop offset="1" stop-color="#00bcd4"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="28" y1="66" x2="94" y2="138" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7b1fa2"/>
+      <stop offset=".5" stop-color="#1e88e5"/>
+      <stop offset="1" stop-color="#00bcd4"/>
+    </linearGradient>
+    <clipPath id="bulb"><circle cx="60" cy="102" r="35"/></clipPath>
+  </defs>
+
+  <!-- Flask neck, open at the top for the reaction. -->
+  <g fill="url(#ring)">
+    <path d="M33 30a3 3 0 0 1 3-3h3a3 3 0 0 1 3 3v44h-9Z"/>
+    <path d="M78 30a3 3 0 0 1 3-3h3a3 3 0 0 1 3 3v44h-9Z"/>
+  </g>
+
+  <!-- Bulb: gradient ring, white gap, low-poly glass. -->
+  <circle cx="60" cy="102" r="41" fill="none" stroke="url(#ring)" stroke-width="8"/>
+  <circle cx="60" cy="102" r="36" fill="#ffffff"/>
+  <g clip-path="url(#bulb)">
+    <circle cx="60" cy="102" r="35" fill="url(#glass)"/>
+    <g fill="#ffffff">
+      <polygon points="25,102 60,67 60,102" opacity=".10"/>
+      <polygon points="60,67 95,102 60,102" opacity=".05"/>
+      <polygon points="25,102 60,137 60,102" opacity=".06"/>
+      <polygon points="95,102 60,137 60,102" opacity=".13"/>
+      <polygon points="44,86 60,76 68,94" opacity=".08"/>
+      <polygon points="72,114 89,106 83,126" opacity=".07"/>
+    </g>
+    <g fill="#0b1a2b">
+      <polygon points="60,67 79,90 60,102" opacity=".10"/>
+      <polygon points="60,137 43,117 60,102" opacity=".08"/>
+    </g>
+  </g>
+
+  <!-- Microscope. -->
+  <g fill="none" stroke="#ffffff" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M53 82 66 68"/>
+    <path d="M70 82c8 9 8 21 0 30"/>
+    <path d="M43 101h23"/>
+    <path d="M41 109h14"/>
+    <path d="M70 112v6"/>
+    <path d="M47 123h26"/>
+  </g>
+  <circle cx="51" cy="84" r="3.2" fill="#ffffff"/>
+
+  <!-- Reaction bubbles: warm above the glass, cooling as they fall back. -->
+  <g>
+    <circle cx="60" cy="15" r="6" fill="#f9a825"/>
+    <circle cx="60" cy="28" r="3" fill="#fbc02d"/>
+    <circle cx="70" cy="23" r="2" fill="#fdd835"/>
+    <circle cx="50" cy="21" r="1.8" fill="#fbc02d"/>
+    <circle cx="75" cy="37" r="3.4" fill="#e53935"/>
+    <circle cx="46" cy="36" r="2.2" fill="#e53935"/>
+    <circle cx="60" cy="42" r="2" fill="#c2185b"/>
+    <circle cx="60" cy="53" r="2.6" fill="#ad1457"/>
+  </g>
+</svg>

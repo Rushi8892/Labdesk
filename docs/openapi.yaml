@@ -1,8 +1,11 @@
 openapi: 3.1.0
 info:
-  title: Api
-  version: 1.0.0
-  description: Metadata-driven laboratory configuration and result workflow
+  title: LabDesk API
+  version: 2.0.0
+  description: >
+    Laboratory configuration and result workflow. Tests, their parameters and
+    their normal ranges are stored in their own tables; a patient is recorded
+    before a result, and a completed result keeps a frozen report snapshot.
 servers:
   - url: /api
 paths:
@@ -15,6 +18,18 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/HealthStatus" }
+  /lab:
+    get:
+      operationId: getLabSettings
+      description: >
+        The laboratory's own letterhead, read from the Lab configuration
+        section. Stationery, not laboratory data.
+      responses:
+        "200":
+          description: Letterhead
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LabSettings" }
   /catalog:
     get:
       operationId: getCatalog
@@ -24,78 +39,6 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Catalog" }
-  /tests:
-    post:
-      operationId: saveTest
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/Test" }
-      responses:
-        "200":
-          description: Saved
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Test" }
-  /parameters:
-    post:
-      operationId: saveParameter
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/TestParameter" }
-      responses:
-        "200":
-          description: Saved
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/TestParameter" }
-  /options:
-    post:
-      operationId: saveOption
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/ParameterOption" }
-      responses:
-        "200":
-          description: Saved
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/ParameterOption" }
-  /references:
-    post:
-      operationId: saveReference
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/ReferenceInterval" }
-      responses:
-        "200":
-          description: Saved as unapproved version
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/ReferenceInterval" }
-  /references/{id}/approve:
-    parameters:
-      - { name: id, in: path, required: true, schema: { type: integer } }
-    post:
-      operationId: approveReference
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/ApprovalInput" }
-      responses:
-        "200":
-          description: Approved
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/ReferenceInterval" }
   /masters:
     post:
       operationId: saveMaster
@@ -110,6 +53,131 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Master" }
+        "400":
+          description: Unknown kind, missing code or name, or a duplicate code
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /tests:
+    post:
+      operationId: saveTest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Test" }
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Test" }
+        "400":
+          description: Missing or duplicate code or name, an unknown category, specimen or method
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /parameters:
+    post:
+      operationId: saveParameter
+      description: >
+        A parameter carries its own reference lines. normalRanges is an array of
+        the lines a report prints, one entry per line, so sex or age bands are
+        simply extra entries. Nothing is compared against them.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TestParameter" }
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TestParameter" }
+        "400":
+          description: >
+            Missing or duplicate code, an unknown data type, more than ten
+            reference lines, a line over 200 characters, or technical limits on
+            a non-numeric parameter
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /options:
+    post:
+      operationId: saveOption
+      description: Dropdown options belong to one parameter.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ParameterOption" }
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ParameterOption" }
+        "400":
+          description: Missing or duplicate code or label, unknown parameter, or a non-dropdown parameter
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /doctors:
+    get:
+      operationId: getDoctors
+      responses:
+        "200":
+          description: Referring doctors
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Doctor" } }
+    post:
+      operationId: saveDoctor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DoctorInput" }
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Doctor" }
+        "400":
+          description: Missing name
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /patients:
+    get:
+      operationId: getPatients
+      responses:
+        "200":
+          description: Patients, each with the referring doctor's name
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Patient" } }
+    post:
+      operationId: savePatient
+      description: A patient is created before any result is entered for them.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PatientInput" }
+      responses:
+        "200":
+          description: Saved, with the referring doctor's name
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Patient" }
+        "400":
+          description: Missing name, out-of-range age, unknown sex or unknown doctor
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /results:
     get:
       operationId: getResults
@@ -121,6 +189,10 @@ paths:
               schema: { type: array, items: { $ref: "#/components/schemas/LabResult" } }
     post:
       operationId: saveResult
+      description: >
+        Saves a draft, or completes it. Completion validates the required
+        values and stores the report snapshot in the same transaction. A
+        completed result can no longer be edited or re-saved.
       requestBody:
         required: true
         content:
@@ -128,10 +200,24 @@ paths:
             schema: { $ref: "#/components/schemas/ResultInput" }
       responses:
         "200":
-          description: Saved draft or updated entered result
+          description: Saved draft, or completed result
           content:
             application/json:
               schema: { $ref: "#/components/schemas/LabResult" }
+        "400":
+          description: >
+            A value outside its parameter's technical limits or format, a
+            dropdown value that is not a configured option, a missing required
+            value on completion, a completed result being re-saved, or another
+            window editing the same draft
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Unknown result, test or patient
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /results/{id}/report:
     parameters:
       - { name: id, in: path, required: true, schema: { type: integer } }
@@ -139,33 +225,63 @@ paths:
       operationId: getReport
       responses:
         "200":
-          description: Immutable completed report snapshot
+          description: The frozen report stored when the result was completed
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ReportSnapshot" }
+        "400":
+          description: The result exists but is still a draft
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Unknown result, or a result with no stored report
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /audit:
     get:
       operationId: getAudit
       responses:
         "200":
-          description: Configuration and result audit history
+          description: Configuration and result audit history, newest first
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/AuditEvent" } }
 components:
   schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
     HealthStatus:
       type: object
       required: [status]
       properties:
         status: { type: string }
+    LabSettings:
+      type: object
+      required: [name, address, phone1, phone2]
+      properties:
+        name: { type: string }
+        tagline:
+          type: string
+          nullable: true
+          description: Optional line under the laboratory name on the report
+        address: { type: string }
+        phone1: { type: string }
+        phone2: { type: string }
+        logo:
+          type: string
+          description: File name inside wwwroot, for example img/gs-lab-mark.svg
     Master:
       type: object
       required: [id, code, name, active]
       properties:
         id: { type: integer }
-        code: { type: string }
-        name: { type: string }
+        code: { type: string, maxLength: 40 }
+        name: { type: string, maxLength: 200 }
         active: { type: boolean }
     MasterInput:
       type: object
@@ -173,171 +289,186 @@ components:
       properties:
         id: { type: integer }
         kind: { type: string, enum: [Category, Specimen, Method] }
-        code: { type: string }
-        name: { type: string }
+        code: { type: string, minLength: 1, maxLength: 40 }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        active: { type: boolean }
+    Doctor:
+      type: object
+      required: [id, name, active]
+      properties:
+        id: { type: integer }
+        name: { type: string, maxLength: 200 }
+        active: { type: boolean }
+    DoctorInput:
+      type: object
+      required: [name, active]
+      properties:
+        id: { type: integer }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        active: { type: boolean }
+    Patient:
+      type: object
+      required: [id, name, age, sex, active]
+      properties:
+        id: { type: integer }
+        name: { type: string, maxLength: 200 }
+        age: { type: number, minimum: 0, maximum: 999.99, description: Years, fractions allowed }
+        sex: { type: string, enum: [Male, Female, Other] }
+        phone: { type: string, maxLength: 30 }
+        doctorId: { type: [integer, "null"] }
+        doctorName:
+          type: [string, "null"]
+          description: Joined from the referring doctor; read-only
+        active: { type: boolean }
+    PatientInput:
+      type: object
+      required: [name, age, sex, active]
+      properties:
+        id: { type: integer }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        age: { type: number, minimum: 0, maximum: 999.99 }
+        sex: { type: string, enum: [Male, Female, Other] }
+        phone: { type: string, maxLength: 30 }
+        doctorId: { type: [integer, "null"] }
         active: { type: boolean }
     Test:
       type: object
-      required: [code, name, categoryId, specimenTypeId, active, displayOrder, price]
+      required: [code, name, categoryId, specimenTypeId, displayOrder, active]
       properties:
         id: { type: integer }
-        code: { type: string, minLength: 1 }
-        name: { type: string, minLength: 1 }
-        shortName: { type: string }
+        code: { type: string, minLength: 1, maxLength: 40 }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        shortName: { type: string, maxLength: 60 }
         categoryId: { type: integer }
         specimenTypeId: { type: integer }
         methodId: { type: [integer, "null"] }
-        description: { type: string }
-        patientPreparation: { type: string }
-        collectionInstructions: { type: string }
-        container: { type: string }
-        minimumSample: { type: string }
-        turnaroundTime: { type: string }
-        price: { type: number, minimum: 0 }
-        displayOrder: { type: integer }
+        description: { type: string, maxLength: 1000 }
+        patientPreparation: { type: string, maxLength: 1000 }
+        collectionInstructions: { type: string, maxLength: 1000 }
+        container: { type: string, maxLength: 200 }
+        minimumSample: { type: string, maxLength: 200 }
+        turnaroundTime: { type: string, maxLength: 100 }
+        displayOrder: { type: integer, minimum: 0 }
         active: { type: boolean }
-        reportTitle: { type: string }
-        notes: { type: string }
+        reportTitle: { type: string, maxLength: 200 }
+        notes: { type: string, maxLength: 1000 }
     TestParameter:
       type: object
-      required: [testId, code, name, dataType, required, allowNegative, referenceType, displayOrder, active]
+      required: [testId, code, name, dataType, required, allowNegative, displayOrder, active]
       properties:
         id: { type: integer }
         testId: { type: integer }
-        code: { type: string, minLength: 1 }
-        name: { type: string, minLength: 1 }
+        code: { type: string, minLength: 1, maxLength: 40 }
+        name: { type: string, minLength: 1, maxLength: 200 }
         dataType: { type: string, enum: [Numeric, Text, Dropdown, Boolean, Date] }
-        unit: { type: string }
-        resultFormat: { type: string }
+        unit: { type: string, maxLength: 40 }
+        resultFormat: { type: string, maxLength: 40 }
         decimalPlaces: { type: [integer, "null"], minimum: 0, maximum: 8 }
         required: { type: boolean }
         allowNegative: { type: boolean }
         technicalMin: { type: [number, "null"] }
         technicalMax: { type: [number, "null"] }
-        referenceType: { type: string, enum: [Range, Text, Decision Value, None] }
-        displayReferenceText: { type: string }
-        displayOrder: { type: integer }
+        normalRanges:
+          type: [array, "null"]
+          maxItems: 10
+          items: { type: string, minLength: 1, maxLength: 200 }
+          description: >
+            The lines this parameter's row prints, in order, for example
+            ["Male: 65-176 ug/dL", "Female: 26-170 ug/dL"]. Empty or null when
+            the parameter has no references.
+        displayOrder: { type: integer, minimum: 0 }
         active: { type: boolean }
-        notes: { type: string }
+        notes: { type: string, maxLength: 1000 }
     ParameterOption:
       type: object
-      required: [parameterId, code, label, sortOrder, abnormal, active]
+      required: [parameterId, code, label, sortOrder, active]
       properties:
         id: { type: integer }
         parameterId: { type: integer }
-        code: { type: string, minLength: 1 }
-        label: { type: string, minLength: 1 }
-        sortOrder: { type: integer }
-        abnormal: { type: boolean }
-        active: { type: boolean }
-    ReferenceInterval:
-      type: object
-      required: [parameterId, context, sex, active]
-      properties:
-        id: { type: integer }
-        parameterId: { type: integer }
-        version: { type: integer }
-        context: { type: string }
-        ageFrom: { type: [number, "null"] }
-        ageTo: { type: [number, "null"] }
-        sex: { type: string, enum: [Any, Male, Female, Other] }
-        lowerValue: { type: [number, "null"] }
-        upperValue: { type: [number, "null"] }
-        lowerOperator: { type: string, enum: [">=", ">"] }
-        upperOperator: { type: string, enum: ["<=", "<"] }
-        referenceText: { type: string }
-        decisionType: { type: string }
-        criticalLow: { type: [number, "null"] }
-        criticalHigh: { type: [number, "null"] }
-        unit: { type: string }
-        effectiveFrom: { type: string }
-        effectiveTo: { type: string }
-        source: { type: string }
-        approvedBy: { type: [string, "null"] }
-        approvedAt: { type: [string, "null"] }
+        code: { type: string, minLength: 1, maxLength: 40 }
+        label: { type: string, minLength: 1, maxLength: 200 }
+        sortOrder: { type: integer, minimum: 0 }
         active: { type: boolean }
     Catalog:
       type: object
-      required: [tests, parameters, options, references, categories, specimens, methods]
+      required: [tests, parameters, options, categories, specimens, methods]
       properties:
         tests: { type: array, items: { $ref: "#/components/schemas/Test" } }
         parameters: { type: array, items: { $ref: "#/components/schemas/TestParameter" } }
         options: { type: array, items: { $ref: "#/components/schemas/ParameterOption" } }
-        references: { type: array, items: { $ref: "#/components/schemas/ReferenceInterval" } }
         categories: { type: array, items: { $ref: "#/components/schemas/Master" } }
         specimens: { type: array, items: { $ref: "#/components/schemas/Master" } }
         methods: { type: array, items: { $ref: "#/components/schemas/Master" } }
-    ApprovalInput:
-      type: object
-      required: [approvedBy]
-      properties:
-        approvedBy: { type: string, minLength: 2 }
     ResultValue:
       type: object
-      required: [parameterId, value]
+      required: [parameterId]
       properties:
         parameterId: { type: integer }
-        value: { type: string }
-        flag: { type: string }
-        referenceText: { type: string }
-        referenceId: { type: [integer, "null"] }
+        value:
+          type: [string, "null"]
+          description: For a Dropdown this is the option's code, not its label
+        normalRanges:
+          type: [array, "null"]
+          items: { type: string }
+          description: >
+            The reference lines the parameter showed when the value was saved,
+            copied from the parameter. Read back on a completed result.
     ResultInput:
       type: object
-      required: [testId, patientName, age, sex, collectedAt, values]
+      required: [patientId, testId, collectedAt]
       properties:
         id: { type: integer }
+        patientId: { type: integer, description: A patient created earlier }
         testId: { type: integer }
-        patientName: { type: string, minLength: 1 }
-        age: { type: number, minimum: 0 }
-        sex: { type: string, enum: [Male, Female, Other] }
-        collectedAt: { type: string }
-        values: { type: array, items: { $ref: "#/components/schemas/ResultValue" } }
+        collectedAt: { type: string, description: ISO date/time, treated as UTC when no offset is given }
+        values:
+          type: array
+          items: { $ref: "#/components/schemas/ResultValue" }
         complete: { type: boolean, default: false }
     LabResult:
-      allOf:
-        - { $ref: "#/components/schemas/ResultInput" }
-        - type: object
-          required: [id, status, createdAt, updatedAt, testName]
-          properties:
-            id: { type: integer }
-            testName: { type: string }
-            status: { type: string, enum: [Draft, Completed] }
-            createdAt: { type: string }
-            updatedAt: { type: string }
-            completedAt: { type: string }
-            configuration: { $ref: "#/components/schemas/ResultConfiguration" }
-    ResultConfiguration:
       type: object
-      required: [test, parameters, options, references]
+      required: [id, patientId, patientName, age, sex, testId, testName, collectedAt, status, createdAt, updatedAt]
       properties:
-        test: { $ref: "#/components/schemas/Test" }
-        parameters: { type: array, items: { $ref: "#/components/schemas/TestParameter" } }
-        options: { type: array, items: { $ref: "#/components/schemas/ParameterOption" } }
-        references: { type: array, items: { $ref: "#/components/schemas/ReferenceInterval" } }
+        id: { type: integer }
+        patientId: { type: integer }
+        patientName: { type: string }
+        age: { type: number }
+        sex: { type: string }
+        doctorName: { type: [string, "null"] }
+        testId: { type: integer }
+        testName: { type: string }
+        collectedAt: { type: string }
+        values: { type: array, items: { $ref: "#/components/schemas/ResultValue" } }
+        status: { type: string, enum: [Draft, Completed] }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+        completedAt: { type: [string, "null"] }
     ReportLine:
       type: object
-      required: [parameterId, name, code, unit, value, referenceText, flag, displayOrder]
+      required: [name, code, normalRanges, displayOrder]
       properties:
-        parameterId: { type: integer }
         name: { type: string }
         code: { type: string }
-        unit: { type: string }
-        value: { type: string }
-        referenceText: { type: string }
-        flag: { type: string }
+        unit: { type: [string, "null"] }
+        value: { type: [string, "null"] }
+        normalRanges:
+          type: array
+          items: { type: string }
+          description: The reference lines frozen with the report; empty when none were set
         displayOrder: { type: integer }
-        optionLabel: { type: string }
+        optionLabel: { type: [string, "null"] }
     ReportSnapshot:
       type: object
-      required: [resultId, reportTitle, testName, testCode, patientName, age, sex, collectedAt, completedAt, lines]
+      required: [resultId, testName, testCode, patientName, age, sex, collectedAt, completedAt, lines]
       properties:
         resultId: { type: integer }
-        reportTitle: { type: string }
+        reportTitle: { type: [string, "null"] }
         testName: { type: string }
         testCode: { type: string }
         patientName: { type: string }
         age: { type: number }
         sex: { type: string }
+        doctorName: { type: [string, "null"] }
         collectedAt: { type: string }
         completedAt: { type: string }
         lines: { type: array, items: { $ref: "#/components/schemas/ReportLine" } }
@@ -351,4 +482,4 @@ components:
         action: { type: string }
         actor: { type: string }
         timestamp: { type: string }
-        details: { type: string }
+        details: { type: string, description: JSON, normally the row before and after the change }

@@ -1,19 +1,22 @@
 import { state, load, subscribe } from './store.js';
 import { closeAllModals } from './modal.js';
-import { html, setHTML, errorBlock } from './dom.js';
+import { html, setHTML, errorBlock, wordmark } from './dom.js';
 
 const routes = [
   [/^\/$/, 'tests'],
   [/^\/tests\/([^/]+)$/, 'test-detail', ['id']],
+  [/^\/patients$/, 'patients'],
+  [/^\/patients\/([^/]+)$/, 'patient-detail', ['id']],
   [/^\/results$/, 'results'],
   [/^\/reports$/, 'reports'],
   [/^\/masters$/, 'masters'],
-  [/^\/references$/, 'references'],
   [/^\/audit$/, 'audit'],
 ];
-const navMatch = { tests: ['tests', 'test-detail'], results: ['results'], reports: ['reports'], masters: ['masters'], references: ['references'], audit: ['audit'] };
+const navMatch = { tests: ['tests', 'test-detail'], patients: ['patients', 'patient-detail'], results: ['results'], reports: ['reports'], masters: ['masters'], audit: ['audit'] };
 
 const main = document.getElementById('main');
+// Same wordmark as the letterhead, so the brand reads identically everywhere.
+setHTML(document.querySelector('[data-slot="brand"]'), wordmark('G.S. LAB', 17));
 const fragCache = new Map();
 let current = null;
 let currentName = '';
@@ -69,8 +72,6 @@ function updateShell() {
   set('text-count-test-catalog', cat ? cat.tests.length : undefined);
   const open = (res ?? []).filter((r) => r.status === 'Draft').length;
   set('text-count-results', open || undefined);
-  const un = (cat?.references ?? []).filter((r) => !r.approvedBy).length;
-  set('text-count-references', un || undefined);
   const h = state.health;
   const ok = !!h.data?.status && !h.error;
   document.getElementById('health-dot').className = `dot ${ok ? 'ok' : h.loading || (!h.data && !h.error) ? '' : 'bad'}`;

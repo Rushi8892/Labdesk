@@ -1,21 +1,22 @@
 import { html, setHTML, pill, toast } from './dom.js';
 import { api } from './api.js';
-import { mutate } from './store.js';
-import { applicable, evaluate, flagLabel, flagTone, indexCatalog, msg, statusTone, validateValue } from './lab.js';
+import { state, mutate } from './store.js';
+import { rangeLines, msg, statusTone, validateValue, isAbnormal, optionLabel } from './lab.js';
 
-// Mounts dynamic result entry. Existing results use their saved configuration snapshot, never live metadata.
+const pad = (n) => String(n).padStart(2, '0');
+// datetime-local speaks local wall time; timestamps travel as UTC.
+const localInput = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+// Mounts dynamic result entry: the patient is chosen from the register, the test
+// from the catalog, then the values are typed. References come from the live
+// catalog; the server re-checks everything and freezes the report on completion.
 export function mountResultEntry(host, { result, liveIx, onSaved }) {
-  const cfg = result?.configuration;
-  const ix = cfg
-    ? indexCatalog({ tests: [cfg.test], parameters: cfg.parameters || [], options: cfg.options || [], references: cfg.references || [] })
-    : liveIx;
+  const ix = liveIx;
   const locked = !!result && result.status === 'Completed';
   const h = {
     testId: result ? String(result.testId) : '',
-    patientName: result?.patientName ?? '',
-    age: result ? String(result.age) : '',
-    sex: result?.sex ?? 'Male',
-    collectedAt: (result?.collectedAt ?? '').slice(0, 16),
+    patientId: result ? String(result.patientId) : '',
+    collectedAt: result?.collectedAt ? localInput(new Date(result.collectedAt)) : localInput(new Date()),
   };
   let vals = {};
   (result?.values || []).forEach((v) => { vals[v.parameterId] = v.value ?? ''; });
@@ -26,24 +27,22 @@ export function mountResultEntry(host, { result, liveIx, onSaved }) {
 
   const tid = () => Number(h.testId);
   const test = () => ix.testById.get(tid());
+  const pts = () => state.patients.data ?? [];
+  const patient = () => pts().find((p) => String(p.id) === h.patientId);
   const params = () => (ix.paramsByTest.get(tid()) ?? []).filter((p) => p.active || (result?.values || []).some((v) => v.parameterId === p.id));
-  const age = () => (h.age.trim() === '' ? null : Number(h.age));
   const rowFor = (p) => {
     const id = p.id;
     const value = vals[id] ?? '';
     const opts = ix.optsByParam.get(id) ?? [];
-    const matches = applicable(p, ix.refsByParam.get(id) ?? [], { age: age(), sex: h.sex, collectedAt: h.collectedAt });
-    const evaluation = evaluate(p, value, matches, opts);
+    // A completed result shows the references it was completed with, not today's.
     const prior = locked ? (result?.values || []).find((x) => x.parameterId === id) : undefined;
-    const ev = prior
-      ? { state: prior.referenceText ? 'single' : 'none', text: prior.referenceText || 'Not configured', flag: prior.flag ?? '', referenceId: prior.referenceId ?? null }
-      : evaluation;
-    return { p, id, value, opts, ev, err: validateValue(p, value, opts) };
+    const lines = prior ? (prior.normalRanges ?? []) : rangeLines(p);
+    return { p, id, value, opts, lines, err: validateValue(p, value, opts) };
   };
 
-  const sexes = ['Male', 'Female', 'Other'];
-  const dis = locked ? html` disabled` : '';
+  const patientOpts = pts().filter((p) => p.active || p.id === result?.patientId);
   const testOpts = ix.raw.tests.filter((t) => t.active || t.id === result?.testId);
+  const dis = locked ? html` disabled` : '';
   setHTML(host, html`<div class="entry pop">
     <div class="entry-head">
       <div class="b" style="font-size:15px">${result ? `Result #${result.id}` : 'New result'}</div>
@@ -57,10 +56,14 @@ export function mountResultEntry(host, { result, liveIx, onSaved }) {
             <option value="">Select a test\u2026</option>
             ${testOpts.map((t) => html`<option value="${t.id}"${String(t.id) === h.testId ? html` selected` : ''}>${t.code} \u00b7 ${t.name}</option>`)}
           </select></label>
-        <label class="field"><span class="lbl">Patient name</span><input class="input" data-h="patientName" value="${h.patientName}" data-testid="input-patient-name"${dis}></label>
-        <label class="field"><span class="lbl">Age (years)</span><input class="input" type="number" min="0" data-h="age" value="${h.age}" data-testid="input-patient-age"${dis}></label>
-        <label class="field"><span class="lbl">Sex</span><select class="select" data-h="sex" data-testid="select-patient-sex"${dis}>${sexes.map((s) => html`<option${s === h.sex ? html` selected` : ''}>${s}</option>`)}</select></label>
-        <label class="field"><span class="lbl">Collected at</span><input class="input" type="datetime-local" data-h="collectedAt" value="${h.collectedAt}" data-testid="input-collected-at"${dis}></label>
+        <label class="field" style="grid-column: span 2"><span class="lbl">Patient</span>
+          <select class="select" data-h="patientId" data-testid="select-result-patient"${locked || result ? html` disabled` : ''}>
+            <option value="">${patientOpts.length ? 'Select a patient\u2026' : 'No patients yet \u2014 add one on Patients'}</option>
+            ${patientOpts.map((p) => html`<option value="${p.id}"${String(p.id) === h.patientId ? html` selected` : ''}>${p.name} \u00b7 ${p.age} y \u00b7 ${p.sex}${p.active ? '' : ' \u00b7 inactive'}</option>`)}
+          </select></label>
+        <label class="field" style="grid-column: span 2"><span class="lbl">Collected at</span><input class="input" type="datetime-local" data-h="collectedAt" value="${h.collectedAt}" data-testid="input-collected-at"${locked ? html` disabled` : ''}></label>
+        <div class="field" style="grid-column: span 2"><span class="lbl">Report header</span>
+          <div class="xs" data-slot="patientinfo"></div></div>
       </div>
       <div data-slot="noparams"></div>
       <div data-slot="rows" style="display:flex;flex-direction:column;gap:8px"></div>
@@ -102,8 +105,7 @@ export function mountResultEntry(host, { result, liveIx, onSaved }) {
         <div class="prow-grid">
           <div><div class="sb">${p.name}${p.required ? html`<span class="req"> *</span>` : ''}</div></div>
           <div class="row">${control(r)}${p.unit ? html`<span class="mono xs muted nowrap">${p.unit}</span>` : ''}</div>
-          <div class="xs"><div class="lbl">Reference</div><div class="mono" data-ref data-testid="text-reference-${r.id}"></div></div>
-          <div data-flag></div>
+          <div><div class="lbl">Reference</div><div class="mono xs" data-ref data-testid="text-reference-${r.id}"></div></div>
         </div>
         <div class="xxs bad-text" data-err data-testid="text-error-${r.id}" style="margin-top:4px" hidden></div>
       </div>`;
@@ -111,16 +113,28 @@ export function mountResultEntry(host, { result, liveIx, onSaved }) {
     ps.forEach(updateRow);
   };
 
+  const updatePatientInfo = () => {
+    const p = patient();
+    const bits = p
+      ? [p.name, `${p.age} y`, p.sex, p.doctorName ? `referred by ${p.doctorName}` : '', p.phone]
+      : [];
+    setHTML($('[data-slot="patientinfo"]'), bits.filter(Boolean).length
+      ? html`${bits.filter(Boolean).join(' \u00b7 ')}`
+      : html`<span class="muted">Choose a patient to print their name, age, sex and referring doctor.</span>`);
+  };
+
   const updateRow = (p) => {
     const el = rowsHost.querySelector(`[data-row="${p.id}"]`);
     if (!el) return;
     const r = rowFor(p);
     const bad = (showVal || r.value) && r.err;
-    const ref = el.querySelector('[data-ref]');
-    ref.textContent = r.ev.text;
-    ref.classList.toggle('muted', r.ev.state !== 'single');
-    setHTML(el.querySelector('[data-flag]'), r.ev.flag ? pill(flagTone(r.ev.flag), flagLabel(r.ev.flag)) : '');
-    el.querySelector('[data-v]').classList.toggle('err', !!bad);
+    // Rendered line by line: one parameter may print three references.
+    setHTML(el.querySelector('[data-ref]'), r.lines.length
+      ? html`${r.lines.map((line, i) => html`<div data-testid="text-reference-${r.id}-${i}">${line}</div>`)}`
+      : html`<div class="muted" data-testid="text-reference-${r.id}-none">Not configured</div>`);
+    const v = el.querySelector('[data-v]');
+    v.classList.toggle('err', !!bad);
+    v.classList.toggle('bad-text', !bad && isAbnormal(optionLabel(r.value, r.opts), r.lines, patient()?.sex));
     const e = el.querySelector('[data-err]');
     e.hidden = !bad;
     e.textContent = bad ? r.err : '';
@@ -129,7 +143,7 @@ export function mountResultEntry(host, { result, liveIx, onSaved }) {
 
   const renderFoot = () => {
     setHTML($('[data-slot="errs"]'), errs.length ? html`<ul class="errlist" data-testid="list-validation-errors">${errs.map((e) => html`<li>${e}</li>`)}</ul>` : '');
-    host.querySelectorAll('[data-save]').forEach((b) => { b.disabled = busy || !test(); });
+    host.querySelectorAll('[data-save]').forEach((b) => { b.disabled = busy || !test() || !patient(); });
     const c = $('[data-save="complete"]');
     if (c) c.textContent = busy ? 'Saving\u2026' : 'Mark as Completed';
   };
@@ -145,7 +159,7 @@ export function mountResultEntry(host, { result, liveIx, onSaved }) {
       if (h[k] === el.value) return;
       h[k] = el.value;
       if (k === 'testId') { vals = {}; renderRows(); renderFoot(); }
-      else if (k !== 'patientName') updateAll();
+      else if (k === 'patientId') { updatePatientInfo(); renderFoot(); }
       return;
     }
     const v = ev.target.closest('[data-v]');
@@ -161,11 +175,10 @@ export function mountResultEntry(host, { result, liveIx, onSaved }) {
   const save = async (complete) => {
     if (busy) return;
     const t = test();
-    const a = age();
+    const p = patient();
     const e = [];
     if (!t) e.push('Choose a test');
-    if (!h.patientName.trim()) e.push('Patient name is required');
-    if (a === null || Number.isNaN(a) || a < 0) e.push('Age in years must be 0 or more');
+    if (!p) e.push('Choose a patient');
     if (!h.collectedAt) e.push('Collected date is required');
     const rows = params().map(rowFor);
     if (complete) {
@@ -183,8 +196,8 @@ export function mountResultEntry(host, { result, liveIx, onSaved }) {
     renderFoot();
     try {
       const saved = await mutate(() => api.saveResult({
-        id: result?.id, testId: tid(), patientName: h.patientName.trim(), age: a, sex: h.sex,
-        collectedAt: h.collectedAt, complete, values: rows.map(({ p, value }) => ({ parameterId: p.id, value: value.trim() })),
+        id: result?.id, patientId: p.id, testId: tid(), collectedAt: new Date(h.collectedAt).toISOString(),
+        complete, values: rows.map(({ p: param, value }) => ({ parameterId: param.id, value: value.trim() })),
       }));
       toast(complete ? 'Result completed' : 'Draft saved');
       busy = false;
@@ -202,6 +215,7 @@ export function mountResultEntry(host, { result, liveIx, onSaved }) {
     if (b) save(b.dataset.save === 'complete');
   });
 
+  updatePatientInfo();
   renderRows();
   renderFoot();
   return { destroy() { alive = false; } };

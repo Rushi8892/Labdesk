@@ -6,15 +6,17 @@
   --sidebar: 200 38% 11%;
   --sidebar-foreground: 190 18% 78%;
   --sidebar-border: 200 25% 20%;
-  --sidebar-primary: 332 72% 56%;
+  --sidebar-primary: 340 76% 56%;
   --sidebar-accent: 200 30% 18%;
   --sidebar-accent-foreground: 40 30% 96%;
-  --primary: 332 72% 42%;
+  --primary: 340 74% 42%;
   --primary-foreground: 40 40% 98%;
   --secondary: 40 16% 90%;
   --muted: 40 16% 91%;
   --muted-foreground: 200 10% 38%;
-  --accent: 175 45% 90%;
+  --accent: 340 60% 95%;
+  /* Brand palette sampled from the G.S. Lab mark: magenta -> purple -> blue -> cyan. */
+  --brand-gradient: linear-gradient(90deg, #d81b60 0%, #8e24aa 34%, #1565c0 68%, #00bcd4 100%);
   --input: 40 12% 76%;
   --font-sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
   --font-mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Menlo, Consolas, monospace;
@@ -30,7 +32,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; border-color: hsl(var(--border)); }
-html, body { margin: 0; height: 100%; }
+html, body { margin: 0; height: 100%; scrollbar-color: hsl(var(--input)) transparent; }
 body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; background: hsl(var(--background)); color: hsl(var(--foreground)); font-size: 13px; min-width: 1180px; }
 ::selection { background: hsl(var(--primary) / 0.25); }
 h1, h2, p { margin: 0; }
@@ -55,7 +57,6 @@ svg.ic { flex-shrink: 0; }
 .wrap { flex-wrap: wrap; }
 .gap4 { gap: 4px; }
 .ml-auto { margin-left: auto; }
-.link:hover { text-decoration: underline; }
 .bad-text { color: hsl(var(--bad)); }
 
 .btn { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: var(--radius); border: 1px solid hsl(var(--input)); background: hsl(var(--card)); font-weight: 600; font-size: 12.5px; cursor: pointer; transition: transform .08s, background .12s, border-color .12s; white-space: nowrap; }
@@ -69,6 +70,12 @@ svg.ic { flex-shrink: 0; }
 .btn-ghost { border-color: transparent; background: transparent; }
 .btn-sm { height: 24px; padding: 0 8px; font-size: 11.5px; }
 .btn-icon { width: 24px; padding: 0; justify-content: center; }
+/* Keyboard focus is drawn from the brand so it reads the same on the light pages
+   and on the dark sidebar, instead of the browser's grey ring. */
+.btn:focus-visible, .tab:focus-visible, .navlink:focus-visible, .check input:focus-visible {
+  outline: 2px solid hsl(var(--primary)); outline-offset: 2px;
+}
+.sidebar .navlink:focus-visible { outline-color: hsl(var(--sidebar-primary)); outline-offset: -2px; }
 
 .input, .select, .textarea { display: block; width: 100%; height: 30px; padding: 0 9px; border: 1px solid hsl(var(--input)); border-radius: var(--radius); background: hsl(44 40% 99% / .7); outline: none; transition: border-color .12s, box-shadow .12s; }
 .textarea { height: auto; min-height: 56px; padding: 6px 9px; resize: vertical; }
@@ -84,7 +91,6 @@ svg.ic { flex-shrink: 0; }
 .pill-ok { background: hsl(var(--ok-bg)); color: hsl(var(--ok)); }
 .pill-warn { background: hsl(var(--warn-bg)); color: hsl(var(--warn)); }
 .pill-bad { background: hsl(var(--bad-bg)); color: hsl(var(--bad)); }
-.pill-ink { background: hsl(var(--ink)); color: hsl(var(--card)); }
 .pill-hatch { background: repeating-linear-gradient(135deg, hsl(var(--warn-bg)), hsl(var(--warn-bg)) 4px, hsl(40 90% 90%) 4px, hsl(40 90% 90%) 8px); color: hsl(var(--warn)); }
 
 .tbl { width: 100%; border-collapse: separate; border-spacing: 0; }
@@ -97,7 +103,6 @@ svg.ic { flex-shrink: 0; }
 .tbl tr.off td { opacity: .55; }
 
 .panel { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: var(--radius-lg); }
-.panel.dim { opacity: .6; }
 
 .skel-wrap { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .skel { background: linear-gradient(90deg, hsl(var(--muted)), hsl(var(--secondary)), hsl(var(--muted))); background-size: 200% 100%; animation: sh 1.2s infinite linear; border-radius: 3px; height: 14px; }
@@ -129,7 +134,7 @@ svg.ic { flex-shrink: 0; }
 .field-msg:empty { display: none; }
 .field-msg.bad { color: hsl(var(--bad)); }
 .check { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; height: 30px; font-weight: 500; }
-.check input { width: 16px; height: 16px; accent-color: hsl(332 72% 42%); margin: 0; }
+.check input { width: 16px; height: 16px; accent-color: hsl(var(--primary)); margin: 0; }
 .checks { display: flex; gap: 20px; grid-column: span 2; }
 .checks.end { align-items: flex-end; grid-column: auto; }
 .form-error { margin-top: 12px; font-size: 12px; padding: 8px; border-radius: var(--radius); background: hsl(var(--bad-bg)); color: hsl(var(--bad)); }
@@ -138,10 +143,11 @@ svg.ic { flex-shrink: 0; }
 /* shell */
 .shell { display: flex; height: 100vh; height: 100dvh; overflow: hidden; }
 .sidebar { width: 212px; flex-shrink: 0; display: flex; flex-direction: column; background: hsl(var(--sidebar)); color: hsl(var(--sidebar-foreground)); }
-.brand { padding: 20px 16px 16px; display: flex; align-items: center; gap: 10px; }
-.brand-mark { width: 32px; height: 32px; border-radius: var(--radius); display: grid; place-items: center; background: hsl(var(--sidebar-primary)); color: #fffaf5; }
-.brand-name { font-weight: 700; font-size: 15px; line-height: 1; color: hsl(var(--sidebar-accent-foreground)); }
-.brand-sub { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; margin-top: 4px; opacity: .6; }
+.brand { padding: 18px 16px 14px; display: flex; align-items: center; gap: 10px;
+  background: radial-gradient(130% 110% at 0 0, hsl(var(--sidebar-primary) / .18), transparent 72%); }
+.brand-mark { width: auto; height: 40px; flex: none; display: block; }
+.brand-name { line-height: 1; }
+.brand-sub { font-size: 7.5px; letter-spacing: .05em; text-transform: uppercase; margin-top: 4px; opacity: .62; white-space: nowrap; }
 .nav { padding: 0 8px; display: flex; flex-direction: column; gap: 2px; flex: 1; }
 .navlink { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: var(--radius); color: hsl(var(--sidebar-foreground)); font-weight: 500; transition: background .12s, color .12s; }
 .navlink:hover { background: hsl(var(--sidebar-accent)); color: hsl(var(--sidebar-accent-foreground)); }
@@ -161,6 +167,9 @@ svg.ic { flex-shrink: 0; }
 .page-sub a { display: inline-flex; align-items: center; gap: 4px; }
 .page-sub a:hover { text-decoration: underline; }
 .page-actions { display: flex; align-items: center; gap: 8px; }
+/* The page a test prints on, set beside it in the patient's test list. */
+.pg-cell { width: 58px; }
+.pg { width: 46px; padding: 0 4px; text-align: center; }
 .toolbar { display: flex; align-items: center; gap: 8px; padding: 10px 24px; border-bottom: 1px solid hsl(var(--border)); }
 .split { display: flex; flex: 1; min-height: 0; }
 .col { display: flex; flex-direction: column; min-height: 0; }
@@ -174,10 +183,9 @@ svg.ic { flex-shrink: 0; }
 .aside-sec:last-child { border-bottom: 0; }
 .aside-sec .hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .dash { font-size: 12px; padding: 12px; border-radius: var(--radius); border: 1px dashed hsl(var(--border)); }
-.refcards { display: flex; flex-direction: column; gap: 8px; }
-.refcard { padding: 12px; }
 .tabs { display: flex; gap: 4px; padding: 12px 24px 0; border-bottom: 1px solid hsl(var(--border)); }
 .tab { padding: 8px 12px; font-weight: 600; font-size: 12.5px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; background: none; cursor: pointer; color: hsl(var(--muted-foreground)); }
+.tab:hover { color: hsl(var(--foreground)); }
 .tab.on { border-color: hsl(var(--primary)); color: hsl(var(--foreground)); }
 
 /* result entry */
@@ -185,8 +193,9 @@ svg.ic { flex-shrink: 0; }
 .entry-head { padding: 12px 24px; border-bottom: 1px solid hsl(var(--border)); display: flex; align-items: center; gap: 12px; }
 .entry-body { flex: 1; padding: 16px 24px; display: flex; flex-direction: column; gap: 16px; }
 .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.tests-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; overflow: auto; }
 .prow { padding: 12px; }
-.prow-grid { display: grid; grid-template-columns: 1.1fr 1.2fr 1.2fr 130px; gap: 12px; align-items: center; }
+.prow-grid { display: grid; grid-template-columns: 1.1fr 1.2fr 1.2fr; gap: 12px; align-items: center; }
 .req { color: hsl(var(--primary)); }
 .entry-foot { border-top: 1px solid hsl(var(--border)); padding: 12px 24px; background: hsl(var(--card)); }
 .errlist { font-size: 12px; margin: 0 0 8px; padding-left: 16px; color: hsl(var(--bad)); }
@@ -196,15 +205,57 @@ svg.ic { flex-shrink: 0; }
 .toast.destructive { background: hsl(var(--bad)); }
 .toast .d { font-size: 12px; opacity: .85; margin-top: 2px; }
 
-.report-sheet { background: #fffefb; color: #1a2326; border: 1px solid hsl(var(--border)); width: 760px; margin: 0 auto; padding: 40px 44px; }
-.rs-top { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 12px; border-bottom: 2px solid #1a2326; }
-.rs-top h2 { font-size: 22px; font-weight: 700; }
-.rs-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 32px; padding: 12px 0; font-size: 12.5px; }
+/* A sheet is one A4 page: the letterhead opens it, the sign-off closes it at the
+   foot of the paper and the tests sit between them. */
+.report-sheet { background: #fffefb; color: #1a2326; border: 1px solid hsl(var(--border)); width: 210mm; min-height: 297mm; box-sizing: border-box; margin: 0 auto; padding: 14mm 16mm 12mm; display: flex; flex-direction: column; }
+.report-sheet > .rs-foot { margin-top: auto; }
+
+/* Where report-sheet.js measures a test block: same width as the printed sheet,
+   parked off-screen so the layout is real but nothing is shown. */
+.rs-measure { position: fixed; left: -10000px; top: 0; width: 178mm; }
+
+/* The lab wordmark, drawn by dom.js wordmark() so it prints as real vectors. */
+.wordmark { display: block; }
+
+/* Letterhead. Stationery, not a record: read live from /api/lab so editing
+   appsettings.json changes the next printout without touching the database. */
+.rs-letterhead { display: flex; align-items: center; gap: 16px; }
+.rs-logo { height: 52px; width: auto; flex: none; }
+.rs-lab-tag { font-size: 8.5px; letter-spacing: .22em; text-transform: uppercase; color: #7a8290; margin-top: 5px; }
+.rs-contact { margin-left: auto; padding-left: 18px; border-left: 1px solid #ddd8cc; font-size: 10.5px; line-height: 1.6; color: #45505c; max-width: 262px; }
+.rs-phone { display: flex; align-items: center; gap: 5px; }
+.rs-phone .ic { color: #c2185b; flex: none; }
+.rs-rule { height: 3px; border-radius: 99px; background: var(--brand-gradient); margin-top: 14px; }
+
+/* Sign-off at the foot of the sheet. The blank space above each line is where a
+   stamp or a wet signature goes after printing, so it is deliberate, not padding. */
+.rs-foot { display: flex; justify-content: space-between; gap: 32px; border-top: 1px solid #ddd8cc; margin-top: 26px; padding-top: 10px; break-inside: avoid; }
+.rs-sign { flex: 1; }
+.rs-sign.right { text-align: right; }
+.rs-sign-pad { height: 56px; }
+.rs-stamp { display: block; height: 100%; width: auto; }
+.rs-sign-lbl { font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: #7a8290; }
+.rs-sign-name { font-size: 11.5px; font-weight: 700; }
+.rs-sign-qual { font-size: 10px; color: #45505c; }
+
+.rs-patient { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid #ddd8cc; border-top: 0; margin-top: 12px; }
+.rs-patient > div { padding: 7px 12px; border-top: 1px solid #ddd8cc; border-right: 1px solid #ddd8cc; }
+.rs-patient > div:nth-child(-n+3) { border-top: 0; }
+.rs-patient > div:nth-child(3n) { border-right: 0; }
+.rs-patient .lbl { font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: #8a919c; }
+.rs-v { font-size: 12.5px; font-weight: 600; margin-top: 2px; }
+
+.rs-top { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 10px; border-bottom: 2px solid #1a2326; margin-top: 20px; }
+.rs-top h2 { font-size: 19px; font-weight: 700; }
 .rs-tbl { width: 100%; font-size: 12.5px; border-collapse: collapse; }
 .rs-tbl thead tr { border-bottom: 1px solid #1a2326; text-align: left; }
 .rs-tbl th { padding: 6px 8px 6px 0; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; }
 .rs-tbl td { padding: 6px 8px 6px 0; vertical-align: top; }
 .rs-tbl tbody tr { border-bottom: 1px solid #ddd8cc; }
+/* A bundle's test blocks: the letterhead and patient stay at the top only. */
+.rs-test { margin-top: 22px; }
+.rs-test .rs-top { margin-top: 0; }
+.rs-meta { font-size: 9.5px; letter-spacing: .04em; color: #7a8290; margin-top: 4px; }
 .report-pane { padding: 24px; background: hsl(var(--muted)); }
 
 .nf { margin: 64px auto; width: 448px; padding: 24px; }
@@ -215,6 +266,10 @@ svg.ic { flex-shrink: 0; }
   body { min-width: 0; background: #fffefb; }
   .no-print { display: none !important; }
   .shell, .main, .split, .scroll, .report-pane { display: block !important; height: auto !important; overflow: visible !important; padding: 0 !important; background: none !important; }
-  .report-sheet { border: 0; width: 100%; padding: 0; margin: 0; }
-  @page { margin: 16mm; }
+  .report-pane > :not(.report-sheet) { display: none; }
+  /* Each sheet is one sheet of A4 with no browser margin around it: the pages were
+     already cut in report-sheet.js, so there is nothing left for Chrome to break. */
+  @page { size: A4; margin: 0; }
+  .report-sheet { border: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; break-after: page; }
+  .report-sheet:last-child { break-after: auto; }
 }

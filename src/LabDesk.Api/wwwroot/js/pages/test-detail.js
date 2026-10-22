@@ -1,9 +1,8 @@
 import { state, load, mutate } from '../store.js';
 import { api } from '../api.js';
 import { html, setHTML, pill, dash, skeleton, empty, errorBlock, onAct, icon } from '../dom.js';
-import { fmtAge, fmtRange, isApproved } from '../lab.js';
+import { rangeLines, rangeText } from '../lab.js';
 import { openTestEditor, openParameterEditor, openOptionEditor } from '../editors.js';
-import { openReferenceEditor, openApproveDialog } from '../reference.js';
 
 export function mount(root, params) {
   const id = Number(params.id);
@@ -18,14 +17,12 @@ export function mount(root, params) {
     const plist = ix?.paramsByTest.get(id) ?? [];
     const sel = plist.find((p) => p.id === selId) ?? plist[0];
     const opts = sel ? ix.optsByParam.get(sel.id) ?? [] : [];
-    const refs = sel ? ix.refsByParam.get(sel.id) ?? [] : [];
-    const contexts = Array.from(new Set((ix?.raw.references ?? []).map((r) => r.context))).filter(Boolean);
-    return { ix, test, plist, sel, opts, refs, contexts };
+    return { ix, test, plist, sel, opts };
   };
 
   function update() {
     const s = state.catalog;
-    const { ix, test, plist, sel, opts, refs } = ctx();
+    const { ix, test, plist, sel, opts } = ctx();
     const stateEl = $('[data-slot="state"]');
     const content = $('[data-slot="content"]');
     let st = null;
@@ -43,7 +40,7 @@ export function mount(root, params) {
     const info = [
       ['Category', ix.cat.get(test.categoryId)?.name], ['Specimen', ix.spec.get(test.specimenTypeId)?.name],
       ['Method', test.methodId ? ix.meth.get(test.methodId)?.name : 'None'], ['Container', test.container], ['Min. sample', test.minimumSample],
-      ['Turnaround', test.turnaroundTime], ['Price', Number(test.price).toFixed(2)], ['Display order', String(test.displayOrder)],
+      ['Turnaround', test.turnaroundTime], ['Display order', String(test.displayOrder)],
       ['Report title', test.reportTitle], ['Short name', test.shortName],
     ];
     const long = [['Description', test.description], ['Patient preparation', test.patientPreparation], ['Collection', test.collectionInstructions], ['Notes', test.notes]];
@@ -54,23 +51,28 @@ export function mount(root, params) {
     setHTML($('[data-slot="params"]'), plist.length === 0
       ? empty('No parameters yet', 'Add the first parameter to start defining what this test reports.', html`<button class="btn btn-primary" data-act="new-param">Add parameter</button>`)
       : html`<table class="tbl">
-        <thead><tr><th>Order</th><th>Code</th><th>Name</th><th>Type</th><th>Unit</th><th>Ref. type</th><th>Req</th><th>Status</th><th></th></tr></thead>
-        <tbody>${plist.map((p, i) => html`<tr class="click ${p.id === sel?.id ? 'sel' : ''} ${p.active ? '' : 'off'}" data-act="sel-param" data-id="${p.id}" data-testid="row-param-${p.id}">
+        <thead><tr><th>Order</th><th>Code</th><th>Name</th><th>Type</th><th>Unit</th><th>Reference / normal ranges</th><th>Req</th><th>Status</th><th></th></tr></thead>
+        <tbody>${plist.map((p, i) => {
+          const range = rangeText(p);
+          return html`<tr class="click ${p.id === sel?.id ? 'sel' : ''} ${p.active ? '' : 'off'}" data-act="sel-param" data-id="${p.id}" data-testid="row-param-${p.id}">
           <td><span class="row" style="gap:2px">
             <button class="btn btn-ghost btn-icon btn-sm" data-act="move" data-i="${i}" data-dir="-1"${i === 0 || busy ? html` disabled` : ''} aria-label="Move up" data-testid="button-up-${p.id}">${icon.up(12)}</button>
             <button class="btn btn-ghost btn-icon btn-sm" data-act="move" data-i="${i}" data-dir="1"${i === plist.length - 1 || busy ? html` disabled` : ''} aria-label="Move down" data-testid="button-down-${p.id}">${icon.down(12)}</button>
             <span class="mono muted" style="margin-left:4px">${p.displayOrder}</span></span></td>
           <td class="mono sb">${p.code}</td><td class="sb">${p.name}</td><td>${p.dataType}</td>
-          <td class="mono">${p.unit || '\u2014'}</td><td>${p.referenceType}</td><td>${p.required ? 'Yes' : 'No'}</td>
+          <td class="mono">${p.unit || '\u2014'}</td>
+          <td class="mono ${range === 'Not configured' ? 'muted' : ''}">${range}</td><td>${p.required ? 'Yes' : 'No'}</td>
           <td>${pill(p.active ? 'pill-ok' : '', p.active ? 'Active' : 'Inactive')}</td>
           <td class="right nowrap">
             <button class="btn btn-sm" data-act="edit-param" data-id="${p.id}" data-testid="button-edit-param-${p.id}">Edit</button>
             <button class="btn btn-sm" data-act="toggle-param" data-id="${p.id}"${busy ? html` disabled` : ''} data-testid="button-toggle-param-${p.id}">${p.active ? 'Deactivate' : 'Activate'}</button>
-          </td></tr>`)}</tbody></table>`);
+          </td></tr>`;
+        })}</tbody></table>`);
 
     const aside = $('[data-slot="aside"]');
-    if (!sel) { setHTML(aside, empty('Select a parameter', 'Options and reference intervals appear here.')); lastSel = null; return; }
+    if (!sel) { setHTML(aside, empty('Select a parameter', 'Its normal range and options appear here.')); lastSel = null; return; }
     const num = sel.dataType === 'Numeric';
+    const lines = rangeLines(sel);
     setHTML(aside, html`<div class="scroll flex-1 ${lastSel !== sel.id ? 'pop' : ''}">
       <div class="aside-sec">
         <div class="lbl">Selected parameter</div>
@@ -78,36 +80,27 @@ export function mount(root, params) {
         <div class="xs muted" style="margin-top:4px">${sel.dataType}${sel.unit ? ` \u00b7 ${sel.unit}` : ''}${num ? ` \u00b7 decimals ${sel.decimalPlaces ?? 'any'} \u00b7 technical ${sel.technicalMin ?? '\u2212\u221e'} to ${sel.technicalMax ?? '+\u221e'} \u00b7 negative ${sel.allowNegative ? 'allowed' : 'blocked'}` : ''}</div>
         ${sel.notes ? html`<div class="xs" style="margin-top:4px">Note: ${sel.notes}</div>` : ''}
       </div>
+      <div class="aside-sec">
+        <div class="hd"><div class="b">Reference / normal ranges</div>
+          <button class="btn btn-sm" data-act="edit-param" data-id="${sel.id}" data-testid="button-edit-param-range">Edit parameter</button></div>
+        <div class="sb mono" data-testid="text-param-normal-range">${lines.length
+          ? html`${lines.map((line, i) => html`<div data-testid="text-param-normal-range-${i}">${line}</div>`)}`
+          : html`<span class="muted">Not configured</span>`}</div>
+        <div class="xs muted" style="margin-top:4px">Printed line by line on the report. Nothing is compared against them.</div>
+        ${lines.length === 0 ? html`<div class="note-warn" style="margin:8px 0 0" data-testid="text-range-not-configured">Not configured. Results show no reference until a line is added.</div>` : ''}
+      </div>
       ${sel.dataType === 'Dropdown' ? html`<div class="aside-sec">
         <div class="hd"><div class="b">Options <span class="mono muted">${opts.length}</span></div>
           <button class="btn btn-sm btn-primary" data-act="new-option" data-testid="button-new-option">${icon.plus(12)} Add option</button></div>
         ${opts.length === 0 ? html`<div class="dash" style="color:hsl(var(--warn))">No options configured. Result entry cannot accept a value until options are added.</div>` : html`<table class="tbl">
-          <thead><tr><th>Sort</th><th>Code</th><th>Label</th><th>Flag</th><th></th></tr></thead>
+          <thead><tr><th>Sort</th><th>Code</th><th>Label</th><th></th></tr></thead>
           <tbody>${opts.map((o) => html`<tr class="${o.active ? '' : 'off'}" data-testid="row-option-${o.id}">
             <td class="mono">${o.sortOrder}</td><td class="mono">${o.code}</td><td>${o.label}</td>
-            <td>${o.abnormal ? pill('pill-warn', 'Abnormal') : dash()}</td>
             <td class="right nowrap"><button class="btn btn-sm" data-act="edit-option" data-id="${o.id}" data-testid="button-edit-option-${o.id}">Edit</button>
               <button class="btn btn-sm" data-act="toggle-option" data-id="${o.id}"${busy ? html` disabled` : ''} data-testid="button-toggle-option-${o.id}">${o.active ? 'Off' : 'On'}</button></td>
           </tr>`)}</tbody></table>`}
       </div>` : ''}
-      <div class="aside-sec">
-        <div class="hd"><div class="b">Reference intervals <span class="mono muted">${refs.length}</span></div>
-          <button class="btn btn-sm btn-primary" data-act="new-ref"${sel.referenceType === 'None' ? html` disabled` : ''} data-testid="button-new-reference">${icon.plus(12)} Add interval</button></div>
-        ${sel.referenceType === 'None' ? html`<div class="note-warn row" style="margin-bottom:8px" data-testid="text-reftype-none">
-          <span style="flex:1">This parameter's reference type is None. Edit the parameter and choose Range, Text or Decision Value before adding intervals.</span>
-          <button class="btn btn-sm" data-act="edit-param" data-id="${sel.id}" data-testid="button-edit-param-reftype">Edit parameter</button></div>` : ''}
-        ${refs.length === 0 ? html`<div class="dash muted">Not configured. Results will show no reference and no flag until the lab enters and approves one.</div>` : html`<div class="refcards">
-          ${refs.map((r) => html`<div class="panel refcard ${r.active ? '' : 'dim'}" data-testid="card-ref-${r.id}">
-            <div class="row wrap" style="gap:6px;margin-bottom:6px">${pill(isApproved(r) ? 'pill-ok' : 'pill-hatch', isApproved(r) ? 'Approved' : 'Unapproved')}${pill('', `v${r.version ?? 1}`)}${!r.active ? pill('', 'Inactive') : ''}</div>
-            <div class="sb mono">${fmtRange(r)} ${r.unit ?? ''}</div>
-            <div class="xs muted" style="margin-top:2px">${r.context} \u00b7 ${r.sex} \u00b7 ${fmtAge(r)}${r.effectiveFrom || r.effectiveTo ? ` \u00b7 ${r.effectiveFrom || '\u2026'} to ${r.effectiveTo || '\u2026'}` : ''}</div>
-            ${isApproved(r) ? html`<div class="xxs muted">Approved by ${r.approvedBy} (typed attribution)</div>` : ''}
-            <div class="row" style="gap:6px;margin-top:8px">
-              ${!isApproved(r) ? html`<button class="btn btn-sm btn-primary" data-act="approve" data-id="${r.id}" data-testid="button-approve-ref-${r.id}">Approve</button>` : ''}
-              <button class="btn btn-sm" data-act="edit-ref" data-id="${r.id}" data-testid="button-edit-ref-${r.id}">${isApproved(r) ? 'New version' : 'Edit'}</button>
-              <button class="btn btn-sm" data-act="toggle-ref" data-id="${r.id}"${busy ? html` disabled` : ''} data-testid="button-toggle-ref-${r.id}">${r.active ? 'Deactivate' : 'Activate'}</button>
-            </div></div>`)}</div>`}
-      </div></div>`);
+    </div>`);
     lastSel = sel.id;
   }
 
@@ -140,10 +133,6 @@ export function mount(root, params) {
     'new-option': () => { const { sel, opts } = ctx(); if (sel) openOptionEditor({ parameterId: sel.id, nextOrder: (opts[opts.length - 1]?.sortOrder ?? 0) + 10 }); },
     'edit-option': (el) => { const { sel, opts } = ctx(); const o = opts.find((x) => x.id === Number(el.dataset.id)); if (sel && o) openOptionEditor({ parameterId: sel.id, option: o, nextOrder: (opts[opts.length - 1]?.sortOrder ?? 0) + 10 }); },
     'toggle-option': (el) => { const o = ctx().opts.find((x) => x.id === Number(el.dataset.id)); if (o) run(() => mutate(() => api.saveOption({ ...o, active: !o.active }))); },
-    'new-ref': () => { const { sel, contexts } = ctx(); if (sel && sel.referenceType !== 'None') openReferenceEditor({ param: sel, contexts }); },
-    'edit-ref': (el) => { const { sel, refs, contexts } = ctx(); const r = refs.find((x) => x.id === Number(el.dataset.id)); if (sel && r) openReferenceEditor({ param: sel, reference: r, contexts }); },
-    'toggle-ref': (el) => { const r = ctx().refs.find((x) => x.id === Number(el.dataset.id)); if (r) run(() => mutate(() => api.saveReference({ ...r, active: !r.active }))); },
-    approve: (el) => { const { sel, refs } = ctx(); const r = refs.find((x) => x.id === Number(el.dataset.id)); if (sel && r) openApproveDialog({ reference: r, label: `${sel.name}: ${fmtRange(r)} (${r.context})` }); },
   });
   load('catalog');
   update();

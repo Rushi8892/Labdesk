@@ -20,8 +20,7 @@ export function mount(root) {
     $('[data-act="new-test"]').disabled = !ix;
     if (ix) {
       const r = ix.raw;
-      const approved = r.references.filter((x) => x.approvedBy).length;
-      setHTML($('[data-slot="sub"]'), html`<span data-testid="text-catalog-summary">${r.tests.length} tests \u00b7 ${r.parameters.length} parameters \u00b7 ${r.options.length} options \u00b7 ${approved} approved / ${r.references.length - approved} unapproved references</span>`);
+      setHTML($('[data-slot="sub"]'), html`<span data-testid="text-catalog-summary">${r.tests.length} tests \u00b7 ${r.parameters.length} parameters \u00b7 ${r.options.length} options</span>`);
       fillSelect($('[data-f="cat"]'), 'All categories', r.categories.map((m) => ({ value: m.id, label: m.name })));
       fillSelect($('[data-f="spec"]'), 'All specimens', r.specimens.map((m) => ({ value: m.id, label: m.name })));
       f.cat = $('[data-f="cat"]').value;
@@ -37,10 +36,10 @@ export function mount(root) {
     setHTML($('[data-slot="body"]'), html`
       ${s.loading ? skeleton(12) : ''}
       ${s.error ? errorBlock('the catalog') : ''}
-      ${ix && rows.length === 0 ? empty(any ? 'No tests match these filters' : 'No tests defined', any ? '' : 'Create a test, then add parameters, options and references.',
+      ${ix && rows.length === 0 ? empty(any ? 'No tests match these filters' : 'No tests defined', any ? '' : 'Create a test, then add its parameters and options.',
         !any ? html`<button class="btn btn-primary" data-act="new-test">New test</button>` : '') : ''}
       ${ix && rows.length > 0 ? html`<table class="tbl">
-        <thead><tr><th>Code</th><th>Test</th><th>Category</th><th>Specimen</th><th>Method</th><th>Params</th><th>Configuration</th><th>Price</th><th>Active</th></tr></thead>
+        <thead><tr><th>Code</th><th>Test</th><th>Category</th><th>Specimen</th><th>Method</th><th>Params</th><th>Normal ranges</th><th>Active</th></tr></thead>
         <tbody>${rows.map((t) => {
           const r = readiness(t, ix);
           return html`<tr class="click ${t.active ? '' : 'off'}" data-act="open" data-id="${t.id}" data-testid="row-test-${t.id}">
@@ -50,11 +49,7 @@ export function mount(root) {
             <td>${ix.spec.get(t.specimenTypeId)?.name ?? '\u2014'}</td>
             <td>${t.methodId ? ix.meth.get(t.methodId)?.name ?? '\u2014' : dash()}</td>
             <td class="mono">${r.params}</td>
-            <td><div class="row gap4 wrap">${r.params === 0 ? pill('pill-warn', 'No parameters') : html`
-              ${pill(r.needRef === 0 || r.withRef === r.needRef ? 'pill-ok' : 'pill-hatch', `Refs ${r.withRef}/${r.needRef}`)}
-              ${r.dropNoOpts > 0 ? pill('pill-warn', `${r.dropNoOpts} dropdown no options`) : ''}
-              ${r.unapproved > 0 ? pill('pill-hatch', `${r.unapproved} unapproved`) : ''}`}</div></td>
-            <td class="mono">${Number(t.price).toFixed(2)}</td>
+            <td><div class="row gap4 wrap">${r.params === 0 ? pill('pill-warn', 'No parameters') : pill(r.missing ? 'pill-hatch' : 'pill-ok', `Ranges ${r.ready}/${r.params}`)}</div></td>
             <td><button class="btn btn-sm ${t.active ? '' : 'btn-ghost'}" data-act="toggle" data-id="${t.id}"${busy ? html` disabled` : ''} data-testid="button-toggle-test-${t.id}">${t.active ? 'Active' : 'Inactive'}</button></td>
           </tr>`;
         })}</tbody></table>` : ''}`);

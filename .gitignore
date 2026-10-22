@@ -17,6 +17,9 @@ appsettings.Local.json
 *.tmp
 *.temp
 
+# Visual Studio publish profiles: per-machine paths from the publish wizard
+**/PublishProfiles/
+
 # Editor and operating-system caches
 .vs/
 .idea/
@@ -25,3 +28,6 @@ appsettings.Local.json
 Thumbs.db
 .cache/
 .local/
+
+# Executor scratch (plan ledgers and briefs); git history is the record
+.superpowers/

@@ -3,20 +3,16 @@ name: Result and snapshot integrity
 description: Simple result lifecycle and historical report snapshot rules.
 ---
 
-Keep results to two states: Draft and Completed. Drafts are editable; completion validates values and captures the report snapshot in one operation. Do not add intermediate result states, verifier/releaser steps, patient codes, contexts, or result comments.
+Keep results to two states: Draft and Completed. Drafts are editable; completion validates the values and stores the report snapshot in the same operation. Do not add intermediate result states, verifier/releaser steps, patient codes, contexts, or result comments.
 
 **Why:** the user asked for result entry to stay simple, with no stages or extra statuses, and explicitly removed patient code and context from result entry.
 
-**How to apply:** Keep the result form and worklist limited to Draft/Completed. Completed results are locked and printable only from their captured snapshot.
+**How to apply:** Keep the result form and worklist limited to Draft/Completed. Completed results are locked and printable only from their stored snapshot.
 
-Review existing results against the configuration captured with that result, not the live test catalog.
+Drafts read the live catalog. There is no captured-configuration store: a parameter's reference lines live on `test_parameter.normal_ranges`, and a completed report is built from `report_snapshot` and `report_line` at the moment it is completed.
 
-**Why:** Laboratories can change labels, units, types, options and approved references. Rendering live metadata can misrepresent the values evaluated when the result was completed.
+**Why:** the versioned reference-interval feature, with its contexts, thresholds, effective dates and approval step, was removed in favour of lines of text on the parameter. A saved copy of a catalog that can no longer change would be dead weight.
 
-**How to apply:** New drafts use the current catalog; existing drafts use captured configuration; completed reports use only their saved snapshot.
+**How to apply:** Drafts, new and existing, are evaluated against the current catalog. Never re-render a completed report from the live catalog.
 
-For configured Decision Value flags, describe whether a threshold is an abnormal trigger rather than assuming it represents a normal condition. Keep displayed flags aligned with server evaluation.
-
-**Why:** “Above” can mean “flag values above this threshold,” not “normal values should be above this threshold.” Confusing these meanings reverses the interpretation without changing the numeric configuration.
-
-**How to apply:** Preserve the explicit decision semantics in editor help, previews and reports. Never infer medical ranges or normality.
+One parameter prints one or more reference lines, stored on the parameter itself in `normal_ranges` as a JSON array of strings (for example `["Male: 65-176 ug/dL", "Female: 26-170 ug/dL"]`). All of `result_value`, `report_line` and `test_parameter` use the same column name and shape. Nothing compares a result against those lines, so no table carries a flag. Never infer, invent or silently widen a medical range.

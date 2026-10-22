@@ -2,7 +2,7 @@ using LabDesk.Api;
 using System.Diagnostics;
 
 // Use the output directory so configuration works from dotnet run, a published
-// folder, or the Replit wrapper regardless of the current working directory.
+// folder, or any wrapper regardless of the current working directory.
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = args.Where(argument => argument != "--initialize").ToArray(),
@@ -12,37 +12,28 @@ builder.Configuration
     .AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: false)
     .AddEnvironmentVariables();
 
-var repository = new Repository(builder.Configuration);
+var database = new Database(builder.Configuration);
 if (args.Contains("--initialize"))
 {
-    if (repository.Provider == "SqlServer")
+    var databaseDirectory = Path.Combine(AppContext.BaseDirectory, "database");
+    var directory = new DirectoryInfo(Directory.GetCurrentDirectory());
+    while (!Directory.Exists(databaseDirectory) && directory is not null)
     {
-        var databaseDirectory = Path.Combine(AppContext.BaseDirectory, "database");
-        var directory = new DirectoryInfo(Directory.GetCurrentDirectory());
-        while (!Directory.Exists(databaseDirectory) && directory is not null)
-        {
-            databaseDirectory = Path.Combine(directory.FullName, "database");
-            directory = directory.Parent;
-        }
-
-        var schema = Path.Combine(databaseDirectory, "schema.sql");
-        var seed = Path.Combine(databaseDirectory, "seed.sql");
-        if (!File.Exists(schema) || !File.Exists(seed))
-        {
-            throw new FileNotFoundException(
-                "Could not locate database/schema.sql and database/seed.sql. Keep both beside the executable.");
-        }
-
-        await repository.InitializeAsync(schema);
-        await repository.InitializeAsync(seed);
-    }
-    else
-    {
-        await repository.InitializePostgreSqlAsync();
-        await SeedCatalog.Seed(repository);
+        databaseDirectory = Path.Combine(directory.FullName, "database");
+        directory = directory.Parent;
     }
 
-    Console.WriteLine($"Initialized {repository.Provider} schema and starter catalog.");
+    var schema = Path.Combine(databaseDirectory, "schema.sql");
+    var seed = Path.Combine(databaseDirectory, "seed.sql");
+    if (!File.Exists(schema) || !File.Exists(seed))
+    {
+        throw new FileNotFoundException(
+            "Could not locate database/schema.sql and database/seed.sql. Keep both beside the executable.");
+    }
+
+    await database.InitializeAsync(schema);
+    await database.InitializeAsync(seed);
+    Console.WriteLine("Initialized the SQL Server schema and starter catalog.");
     return;
 }
 
@@ -59,8 +50,29 @@ var serverUrl = !string.IsNullOrWhiteSpace(port)
         ?? builder.Configuration["Server:Url"]
         ?? "http://localhost:5000";
 builder.WebHost.UseUrls(serverUrl);
-builder.Services.AddSingleton(repository);
-builder.Services.AddSingleton<LabDeskService>();
+
+builder.Services.AddSingleton(database);
+builder.Services.AddSingleton<AuditRepository>();
+builder.Services.AddSingleton<CatalogRepository>();
+builder.Services.AddSingleton<PatientRepository>();
+builder.Services.AddSingleton<ResultRepository>();
+builder.Services.AddSingleton<CatalogService>();
+builder.Services.AddSingleton<PatientService>();
+builder.Services.AddSingleton<ResultService>();
+
+// The laboratory's own letterhead lives in configuration, not in the database:
+// it is stationery, not a laboratory record. Lab:Logo names a file in wwwroot.
+builder.Services.AddSingleton(new LabSettings(
+    builder.Configuration["Lab:Name"] ?? "Laboratory",
+    builder.Configuration["Lab:Address"] ?? string.Empty,
+    builder.Configuration["Lab:Phone1"] ?? string.Empty,
+    builder.Configuration["Lab:Phone2"] ?? string.Empty,
+    builder.Configuration["Lab:Logo"] ?? "img/gs-lab-mark.png",
+    builder.Configuration["Lab:Tagline"],
+    builder.Configuration["Lab:TechnicianLabel"] ?? "Lab Technician Signature",
+    builder.Configuration["Lab:SignatoryName"],
+    builder.Configuration["Lab:SignatoryQualification"]));
+
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
@@ -80,7 +92,6 @@ app.Use(async (context, next) =>
             KeyNotFoundException => StatusCodes.Status404NotFound,
             ArgumentException => StatusCodes.Status400BadRequest,
             BadHttpRequestException => StatusCodes.Status400BadRequest,
-            InvalidOperationException => StatusCodes.Status500InternalServerError,
             _ => StatusCodes.Status500InternalServerError
         };
 
@@ -108,22 +119,29 @@ app.Use(async (context, next) =>
 
 // The desktop interface and API share the same origin and port.
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    // Browsers cache scripts without asking, so a rebuilt page can keep running
+    // yesterday's module. Revalidate every asset instead: a 304 costs nothing here.
+    OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = "no-cache",
+});
 
 var api = app.MapGroup("/api");
 api.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
-api.MapGet("/catalog", (LabDeskService service) => service.Catalog());
-api.MapPost("/tests", (Test input, LabDeskService service) => service.SaveTest(input));
-api.MapPost("/parameters", (TestParameter input, LabDeskService service) => service.SaveParameter(input));
-api.MapPost("/options", (ParameterOption input, LabDeskService service) => service.SaveOption(input));
-api.MapPost("/references", (ReferenceInterval input, LabDeskService service) => service.SaveReference(input));
-api.MapPost("/references/{id:int}/approve", (int id, ApprovalInput input, LabDeskService service) =>
-    service.ApproveReference(id, input));
-api.MapPost("/masters", (MasterInput input, LabDeskService service) => service.SaveMaster(input));
-api.MapGet("/results", (LabDeskService service) => service.Results());
-api.MapPost("/results", (ResultInput input, LabDeskService service) => service.SaveResult(input));
-api.MapGet("/results/{id:int}/report", (int id, LabDeskService service) => service.Report(id));
-api.MapGet("/audit", (LabDeskService service) => service.Audit());
+api.MapGet("/lab", (LabSettings lab) => lab);
+api.MapGet("/catalog", (CatalogService service) => service.CatalogAsync());
+api.MapPost("/tests", (Test input, CatalogService service) => service.SaveTestAsync(input));
+api.MapPost("/parameters", (TestParameter input, CatalogService service) => service.SaveParameterAsync(input));
+api.MapPost("/options", (ParameterOption input, CatalogService service) => service.SaveOptionAsync(input));
+api.MapPost("/masters", (MasterInput input, CatalogService service) => service.SaveMasterAsync(input));
+api.MapGet("/doctors", (PatientService service) => service.DoctorsAsync());
+api.MapPost("/doctors", (DoctorInput input, PatientService service) => service.SaveDoctorAsync(input));
+api.MapGet("/patients", (PatientService service) => service.PatientsAsync());
+api.MapPost("/patients", (PatientInput input, PatientService service) => service.SavePatientAsync(input));
+api.MapGet("/results", (ResultService service) => service.ResultsAsync());
+api.MapPost("/results", (ResultInput input, ResultService service) => service.SaveResultAsync(input));
+api.MapGet("/results/{id:int}/report", (int id, ResultService service) => service.ReportAsync(id));
+api.MapGet("/audit", (AuditRepository audit) => audit.ListAsync());
 
 app.Map("/api/{**path}", () => Results.NotFound(new { error = "API endpoint not found." }));
 app.MapFallbackToFile("index.html");
