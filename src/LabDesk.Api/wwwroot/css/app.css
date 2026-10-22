@@ -17,7 +17,6 @@
   --accent: 340 60% 95%;
   /* Brand palette sampled from the G.S. Lab mark: magenta -> purple -> blue -> cyan. */
   --brand-gradient: linear-gradient(90deg, #d81b60 0%, #8e24aa 34%, #1565c0 68%, #00bcd4 100%);
-  --brand-grad-text: linear-gradient(92deg, #c2185b 0%, #8e24aa 38%, #1565c0 72%, #0097a7 100%);
   --input: 40 12% 76%;
   --font-sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
   --font-mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Menlo, Consolas, monospace;
@@ -147,7 +146,7 @@ svg.ic { flex-shrink: 0; }
 .brand { padding: 18px 16px 14px; display: flex; align-items: center; gap: 10px;
   background: radial-gradient(130% 110% at 0 0, hsl(var(--sidebar-primary) / .18), transparent 72%); }
 .brand-mark { width: auto; height: 40px; flex: none; display: block; }
-.brand-name { font-weight: 800; font-size: 15px; line-height: 1; letter-spacing: .01em; color: hsl(var(--sidebar-accent-foreground)); }
+.brand-name { line-height: 1; }
 .brand-sub { font-size: 7.5px; letter-spacing: .05em; text-transform: uppercase; margin-top: 4px; opacity: .62; white-space: nowrap; }
 .nav { padding: 0 8px; display: flex; flex-direction: column; gap: 2px; flex: 1; }
 .navlink { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: var(--radius); color: hsl(var(--sidebar-foreground)); font-weight: 500; transition: background .12s, color .12s; }
@@ -168,6 +167,9 @@ svg.ic { flex-shrink: 0; }
 .page-sub a { display: inline-flex; align-items: center; gap: 4px; }
 .page-sub a:hover { text-decoration: underline; }
 .page-actions { display: flex; align-items: center; gap: 8px; }
+/* The page a test prints on, set beside it in the patient's test list. */
+.pg-cell { width: 58px; }
+.pg { width: 46px; padding: 0 4px; text-align: center; }
 .toolbar { display: flex; align-items: center; gap: 8px; padding: 10px 24px; border-bottom: 1px solid hsl(var(--border)); }
 .split { display: flex; flex: 1; min-height: 0; }
 .col { display: flex; flex-direction: column; min-height: 0; }
@@ -191,6 +193,7 @@ svg.ic { flex-shrink: 0; }
 .entry-head { padding: 12px 24px; border-bottom: 1px solid hsl(var(--border)); display: flex; align-items: center; gap: 12px; }
 .entry-body { flex: 1; padding: 16px 24px; display: flex; flex-direction: column; gap: 16px; }
 .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.tests-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; overflow: auto; }
 .prow { padding: 12px; }
 .prow-grid { display: grid; grid-template-columns: 1.1fr 1.2fr 1.2fr; gap: 12px; align-items: center; }
 .req { color: hsl(var(--primary)); }
@@ -202,21 +205,38 @@ svg.ic { flex-shrink: 0; }
 .toast.destructive { background: hsl(var(--bad)); }
 .toast .d { font-size: 12px; opacity: .85; margin-top: 2px; }
 
-.report-sheet { background: #fffefb; color: #1a2326; border: 1px solid hsl(var(--border)); width: 760px; margin: 0 auto; padding: 40px 44px; }
+/* A sheet is one A4 page: the letterhead opens it, the sign-off closes it at the
+   foot of the paper and the tests sit between them. */
+.report-sheet { background: #fffefb; color: #1a2326; border: 1px solid hsl(var(--border)); width: 210mm; min-height: 297mm; box-sizing: border-box; margin: 0 auto; padding: 14mm 16mm 12mm; display: flex; flex-direction: column; }
+.report-sheet > .rs-foot { margin-top: auto; }
+
+/* Where report-sheet.js measures a test block: same width as the printed sheet,
+   parked off-screen so the layout is real but nothing is shown. */
+.rs-measure { position: fixed; left: -10000px; top: 0; width: 178mm; }
+
+/* The lab wordmark, drawn by dom.js wordmark() so it prints as real vectors. */
+.wordmark { display: block; }
 
 /* Letterhead. Stationery, not a record: read live from /api/lab so editing
    appsettings.json changes the next printout without touching the database. */
 .rs-letterhead { display: flex; align-items: center; gap: 16px; }
-.rs-logo { width: 52px; height: auto; flex: none; }
-.rs-lab-name { font-size: 29px; font-weight: 800; line-height: 1; letter-spacing: .01em; color: #c2185b; }
-@supports ((-webkit-background-clip: text) or (background-clip: text)) {
-  .rs-lab-name { background: var(--brand-grad-text); -webkit-background-clip: text; background-clip: text; color: transparent; }
-}
+.rs-logo { height: 52px; width: auto; flex: none; }
 .rs-lab-tag { font-size: 8.5px; letter-spacing: .22em; text-transform: uppercase; color: #7a8290; margin-top: 5px; }
 .rs-contact { margin-left: auto; padding-left: 18px; border-left: 1px solid #ddd8cc; font-size: 10.5px; line-height: 1.6; color: #45505c; max-width: 262px; }
 .rs-phone { display: flex; align-items: center; gap: 5px; }
 .rs-phone .ic { color: #c2185b; flex: none; }
 .rs-rule { height: 3px; border-radius: 99px; background: var(--brand-gradient); margin-top: 14px; }
+
+/* Sign-off at the foot of the sheet. The blank space above each line is where a
+   stamp or a wet signature goes after printing, so it is deliberate, not padding. */
+.rs-foot { display: flex; justify-content: space-between; gap: 32px; border-top: 1px solid #ddd8cc; margin-top: 26px; padding-top: 10px; break-inside: avoid; }
+.rs-sign { flex: 1; }
+.rs-sign.right { text-align: right; }
+.rs-sign-pad { height: 56px; }
+.rs-stamp { display: block; height: 100%; width: auto; }
+.rs-sign-lbl { font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: #7a8290; }
+.rs-sign-name { font-size: 11.5px; font-weight: 700; }
+.rs-sign-qual { font-size: 10px; color: #45505c; }
 
 .rs-patient { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid #ddd8cc; border-top: 0; margin-top: 12px; }
 .rs-patient > div { padding: 7px 12px; border-top: 1px solid #ddd8cc; border-right: 1px solid #ddd8cc; }
@@ -232,9 +252,11 @@ svg.ic { flex-shrink: 0; }
 .rs-tbl th { padding: 6px 8px 6px 0; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; }
 .rs-tbl td { padding: 6px 8px 6px 0; vertical-align: top; }
 .rs-tbl tbody tr { border-bottom: 1px solid #ddd8cc; }
+/* A bundle's test blocks: the letterhead and patient stay at the top only. */
+.rs-test { margin-top: 22px; }
+.rs-test .rs-top { margin-top: 0; }
+.rs-meta { font-size: 9.5px; letter-spacing: .04em; color: #7a8290; margin-top: 4px; }
 .report-pane { padding: 24px; background: hsl(var(--muted)); }
-/* A bundle stacks this patient's sheets; each one starts a fresh page when printed. */
-.report-pane > .report-sheet + .report-sheet { margin-top: 24px; }
 
 .nf { margin: 64px auto; width: 448px; padding: 24px; }
 .nf h1 { font-size: 22px; display: flex; align-items: center; gap: 8px; }
@@ -244,7 +266,10 @@ svg.ic { flex-shrink: 0; }
   body { min-width: 0; background: #fffefb; }
   .no-print { display: none !important; }
   .shell, .main, .split, .scroll, .report-pane { display: block !important; height: auto !important; overflow: visible !important; padding: 0 !important; background: none !important; }
-  .report-sheet { border: 0; width: 100%; padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .report-pane > .report-sheet + .report-sheet { margin-top: 0; break-before: page; }
-  @page { margin: 16mm; }
+  .report-pane > :not(.report-sheet) { display: none; }
+  /* Each sheet is one sheet of A4 with no browser margin around it: the pages were
+     already cut in report-sheet.js, so there is nothing left for Chrome to break. */
+  @page { size: A4; margin: 0; }
+  .report-sheet { border: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; break-after: page; }
+  .report-sheet:last-child { break-after: auto; }
 }

@@ -140,18 +140,32 @@ settings file:
   "Address": "Pathan Hospital, Near Veershaliv Bank, Hulgeshwari Road, Chikkaranji",
   "Phone1": "9370154709",
   "Phone2": "7499404630",
-  "Logo": "img/gs-lab-mark.svg"
+  "Logo": "img/gs-lab-mark.svg",
+  "TechnicianLabel": "Lab Technician Signature",
+  "SignatoryName": "Mr. Pranav V. Patil",
+  "SignatoryQualification": "Dmlt"
 }
 ```
 
 `Lab:Logo` names a file inside `wwwroot`, so a new logo is a new image file
-copied into `wwwroot` plus this one setting. The shipped mark is the vector
-G.S. Lab logo at `wwwroot/img/gs-lab-mark.svg` (the same art as `favicon.svg`,
-simplified for a 16 px tab icon). `Lab:Tagline` is optional and hidden when
+copied into `wwwroot` plus this one setting. The shipped mark is
+`wwwroot/img/gs-lab-mark.png`, cut out of the lab's artwork so it sits on both the
+cream report paper and the dark sidebar (the older `gs-lab-mark.svg` / `favicon.svg`
+are no longer referenced). `Lab:Tagline` is optional and hidden when
 empty. The API serves this section as `GET /api/lab`.
-It is read at print time, so a report reprinted after a change shows the current
-letterhead, while the patient, the referring doctor, the references and the dates
-were frozen into the report when it was completed.
+
+`TechnicianLabel`, `SignatoryName` and `SignatoryQualification` fill the sign-off
+band at the foot of every printed page: the label on the left prints under a
+placeholder stamp image (`wwwroot/img/lab-stamp.png`, delete the `<img>` in
+`signature()` or replace that file to change it), the name and qualification
+print on the right. Leave the name empty to print only the stamp column.
+The letterhead opens each page and this band closes it, at the foot of the paper.
+A multi-test file is cut into whole A4 pages in `report-sheet.js` before it is
+printed (each test is measured and kept together), because a browser drops the
+table row that straddles a page break and prints fixed headers over the text.
+As with the letterhead, it is read at print time, so a report reprinted after a
+change shows the current letterhead, while the patient, the referring doctor,
+the references and the dates were frozen into the report when it was completed.
 
 ### 4. Initialize and seed
 
@@ -168,6 +182,14 @@ The SQL Server schema and seed files can also be run directly in SSMS.
 
 The catalog remains laboratory-editable. Each parameter carries its own reference
 lines, which the laboratory enters; the application must not invent one.
+
+Those reference lines are also read back: a result outside them prints in red (and
+types in red on the entry screen). `js/lab.js` (`isAbnormal`) understands the shapes
+the laboratory actually types - `12.0 - 15.0`, `< 200`, `> 190 : Very High`,
+`≥ 6.5 : Diabetes`, `0.6 - 1.8 : Male`, staged bands such as `30 - 80 : Optimum
+Level`, and word references like `Negative` / `No growth`. Only bands whose own text
+says Normal/Desirable/Optimum/Negative count as normal; a reference the reader cannot
+parse is never flagged rather than guessed at.
 
 ### 5. Start the application
 
@@ -264,8 +286,17 @@ the required security controls and laboratory validation.
   or verifier/releaser steps exist.
 - Completed reports print their stored values, labels, units and reference lines;
   later catalog edits do not alter them.
-- A patient's page lists every test they have had; saving there bundles all of that
-  patient's completed reports into one PDF, one report per page.
+- A new report can cover several tests at once: tick them, type every parameter on
+  one screen, and each test is saved as its own result with its own number.
+- A patient's page lists every test they have had; saving there puts all of that
+  patient's completed reports in one PDF — a letterhead and patient block on every
+  page, a block per test, and the sign-off at the foot of the paper.
+- Each completed test carries the page it prints on, so the pages can be arranged
+  by hand before printing. The number is a layout choice for that print, not part
+  of the report: it is not stored, audited or put into the frozen snapshot. A page
+  that cannot hold what was put on it blocks the print with a message instead of
+  spilling over the sign-off; a page left empty is printed as a letterhead-only
+  page and reported in the same message strip.
 - Configuration is deactivated rather than hard-deleted, and every save is
   audited with the row before and after the change.
 

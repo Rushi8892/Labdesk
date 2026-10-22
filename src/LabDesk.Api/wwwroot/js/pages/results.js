@@ -2,6 +2,7 @@ import { state, load } from '../store.js';
 import { html, setHTML, pill, skeleton, empty, errorBlock, onAct } from '../dom.js';
 import { fmtDate, statusTone } from '../lab.js';
 import { mountResultEntry } from '../result-entry.js';
+import { mountMultiEntry } from '../multi-entry.js';
 
 const STATUSES = ['Draft', 'Completed'];
 
@@ -52,7 +53,9 @@ export function mount(root) {
     const fresh = document.createElement('div');
     fresh.style.height = '100%';
     host.replaceChildren(fresh);
-    entry = mountResultEntry(fresh, { result: current, liveIx: ix, onSaved: (id) => { sel = id; update(); } });
+    entry = sel === 'new'
+      ? mountMultiEntry(fresh, { liveIx: ix, onSaved: () => { sel = null; update(); } })
+      : mountResultEntry(fresh, { result: current, liveIx: ix, onSaved: (id) => { sel = id; update(); } });
   }
 
   const off = onAct(root, {

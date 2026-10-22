@@ -1,7 +1,7 @@
 import { html, setHTML, pill, toast } from './dom.js';
 import { api } from './api.js';
 import { state, mutate } from './store.js';
-import { rangeLines, msg, statusTone, validateValue } from './lab.js';
+import { rangeLines, msg, statusTone, validateValue, isAbnormal, optionLabel } from './lab.js';
 
 const pad = (n) => String(n).padStart(2, '0');
 // datetime-local speaks local wall time; timestamps travel as UTC.
@@ -132,7 +132,9 @@ export function mountResultEntry(host, { result, liveIx, onSaved }) {
     setHTML(el.querySelector('[data-ref]'), r.lines.length
       ? html`${r.lines.map((line, i) => html`<div data-testid="text-reference-${r.id}-${i}">${line}</div>`)}`
       : html`<div class="muted" data-testid="text-reference-${r.id}-none">Not configured</div>`);
-    el.querySelector('[data-v]').classList.toggle('err', !!bad);
+    const v = el.querySelector('[data-v]');
+    v.classList.toggle('err', !!bad);
+    v.classList.toggle('bad-text', !bad && isAbnormal(optionLabel(r.value, r.opts), r.lines, patient()?.sex));
     const e = el.querySelector('[data-err]');
     e.hidden = !bad;
     e.textContent = bad ? r.err : '';

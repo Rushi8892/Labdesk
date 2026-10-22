@@ -67,8 +67,11 @@ builder.Services.AddSingleton(new LabSettings(
     builder.Configuration["Lab:Address"] ?? string.Empty,
     builder.Configuration["Lab:Phone1"] ?? string.Empty,
     builder.Configuration["Lab:Phone2"] ?? string.Empty,
-    builder.Configuration["Lab:Logo"] ?? "img/gs-lab-mark.svg",
-    builder.Configuration["Lab:Tagline"]));
+    builder.Configuration["Lab:Logo"] ?? "img/gs-lab-mark.png",
+    builder.Configuration["Lab:Tagline"],
+    builder.Configuration["Lab:TechnicianLabel"] ?? "Lab Technician Signature",
+    builder.Configuration["Lab:SignatoryName"],
+    builder.Configuration["Lab:SignatoryQualification"]));
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -116,7 +119,12 @@ app.Use(async (context, next) =>
 
 // The desktop interface and API share the same origin and port.
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    // Browsers cache scripts without asking, so a rebuilt page can keep running
+    // yesterday's module. Revalidate every asset instead: a 304 costs nothing here.
+    OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = "no-cache",
+});
 
 var api = app.MapGroup("/api");
 api.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));

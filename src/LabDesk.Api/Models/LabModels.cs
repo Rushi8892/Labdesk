@@ -57,9 +57,10 @@ public record Catalog(List<Test> Tests, List<TestParameter> Parameters, List<Par
     List<Master> Categories, List<Master> Specimens, List<Master> Methods);
 
 // The laboratory's own letterhead, read from configuration rather than stored as
-// laboratory data. Logo names a file inside wwwroot.
+// laboratory data. Logo names a file inside wwwroot. The signature block at the
+// foot of the report is stationery too: who signs the sheet is not a lab record.
 public record LabSettings(string Name, string Address, string Phone1, string Phone2, string? Logo,
-    string? Tagline);
+    string? Tagline, string? TechnicianLabel, string? SignatoryName, string? SignatoryQualification);
 
 // What a writer hands the audit trail, and what the report page prints.
 public record AuditNote(string Action, string Details);

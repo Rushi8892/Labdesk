@@ -2,9 +2,9 @@
 <div class="col flex-1" data-slot="content" hidden>
   <header class="page-head no-print">
     <div><h1 data-slot="title"></h1><div class="page-sub"><a href="#/patients" data-testid="link-back-patients"><svg class="ic" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M19 12H5"/></svg> Patients</a><span data-slot="sub" style="margin-left:8px"></span></div></div>
-    <div class="page-actions"><button class="btn btn-primary" data-act="save-all" data-testid="button-save-all-reports" disabled><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg> Save all reports (PDF)</button></div>
+    <div class="page-actions"><span class="xxs bad-text" data-slot="pages-warn" data-testid="text-pages-warn" hidden></span><button class="btn btn-primary" data-act="save-all" data-testid="button-save-all-reports" disabled><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg> Save all reports (PDF)</button></div>
   </header>
-  <div class="info-grid" data-slot="info"></div>
+  <div class="info-grid no-print" data-slot="info"></div>
   <div class="split">
     <section class="col no-print" style="width:380px;flex-shrink:0;border-right:1px solid hsl(var(--border))">
       <div class="scroll flex-1" data-slot="list"></div>

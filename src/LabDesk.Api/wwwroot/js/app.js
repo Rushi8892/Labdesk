@@ -1,6 +1,6 @@
 import { state, load, subscribe } from './store.js';
 import { closeAllModals } from './modal.js';
-import { html, setHTML, errorBlock } from './dom.js';
+import { html, setHTML, errorBlock, wordmark } from './dom.js';
 
 const routes = [
   [/^\/$/, 'tests'],
@@ -15,6 +15,8 @@ const routes = [
 const navMatch = { tests: ['tests', 'test-detail'], patients: ['patients', 'patient-detail'], results: ['results'], reports: ['reports'], masters: ['masters'], audit: ['audit'] };
 
 const main = document.getElementById('main');
+// Same wordmark as the letterhead, so the brand reads identically everywhere.
+setHTML(document.querySelector('[data-slot="brand"]'), wordmark('G.S. LAB', 17));
 const fragCache = new Map();
 let current = null;
 let currentName = '';

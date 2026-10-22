@@ -17,6 +17,9 @@ appsettings.Local.json
 *.tmp
 *.temp
 
+# Visual Studio publish profiles: per-machine paths from the publish wizard
+**/PublishProfiles/
+
 # Editor and operating-system caches
 .vs/
 .idea/
