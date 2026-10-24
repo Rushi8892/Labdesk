@@ -34,8 +34,9 @@ GO
 
    A parameter's references are free text: normal_ranges holds a JSON array of
    the lines its row prints, so "Male: 65-176" and "Female: 26-170" are simply
-   two entries on one parameter. Nothing compares a result against them and so
-   no table carries a flag: the laboratory reads the printed line.
+   two entries on one parameter. Nothing is stored about whether a value is
+   normal: the report compares the typed value against those lines when it
+   renders and prints an out-of-range one in red (js/lab.js, isAbnormal).
 
    Every block is existence-checked, so this file can be run repeatedly.
    ===================================================================== */

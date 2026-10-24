@@ -33,6 +33,16 @@ export function indexCatalog(c) {
 
 export const toNum = (s) => (String(s ?? '').trim() === '' ? null : Number(s));
 export const str = (n) => (n === null || n === undefined ? '' : String(n));
+
+// A code made from the name the user typed. Codes are unique per test, so a name
+// used twice gets a number instead of a failed save.
+export function parameterCode(name, taken = []) {
+  const used = new Set(taken.map((c) => String(c).toUpperCase()));
+  const base = String(name ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20) || 'PARAM';
+  let code = base;
+  for (let n = 2; used.has(code); n += 1) code = `${base.slice(0, 18)}${n}`;
+  return code;
+}
 export const fmtDate = (s) => (s ? new Date(s).toLocaleString() : '\u2014');
 export const msg = (e) => (e instanceof Error ? e.message : 'Request failed');
 const has = (n) => n !== null && n !== undefined;

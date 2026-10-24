@@ -1,7 +1,7 @@
 import { state, load, mutate } from '../store.js';
 import { api } from '../api.js';
 import { html, setHTML, pill, dash, skeleton, empty, errorBlock, onAct, icon } from '../dom.js';
-import { rangeLines, rangeText } from '../lab.js';
+import { rangeLines, rangeText, parameterCode } from '../lab.js';
 import { openTestEditor, openParameterEditor, openOptionEditor } from '../editors.js';
 
 export function mount(root, params) {
@@ -19,6 +19,40 @@ export function mount(root, params) {
     const opts = sel ? ix.optsByParam.get(sel.id) ?? [] : [];
     return { ix, test, plist, sel, opts };
   };
+
+  // The fast path for filling a test: type a name, press Enter. Code, order and
+  // the rest are filled in, so a menu of parameters needs no dialog each.
+  const quick = (k) => root.querySelector(`[data-quick="${k}"]`);
+  const clearQuick = () => ['name', 'unit', 'reference'].forEach((k) => { const el = quick(k); if (el) el.value = ''; });
+
+  async function quickAdd() {
+    if (busy) return;
+    const name = quick('name').value.trim();
+    const { plist } = ctx();
+    if (!name) {
+      quick('name').classList.add('err');
+      quick('name').focus();
+      return;
+    }
+    const reference = quick('reference').value.trim();
+    busy = true;
+    update();
+    try {
+      const saved = await mutate(() => api.saveParameter({
+        testId: id, code: parameterCode(name, plist.map((p) => p.code)), name,
+        dataType: quick('dataType').value, unit: quick('unit').value.trim(),
+        normalRanges: reference ? [reference] : null,
+        displayOrder: (plist[plist.length - 1]?.displayOrder ?? 0) + 10,
+        required: false, active: true,
+      }));
+      selId = saved.id;
+      clearQuick();
+      quick('name').classList.remove('err');
+    } catch { /* toasted */ }
+    busy = false;
+    update();
+    quick('name').focus();
+  }
 
   function update() {
     const s = state.catalog;
@@ -49,7 +83,7 @@ export function mount(root, params) {
 
     $('[data-slot="pcount"]').textContent = String(plist.length);
     setHTML($('[data-slot="params"]'), plist.length === 0
-      ? empty('No parameters yet', 'Add the first parameter to start defining what this test reports.', html`<button class="btn btn-primary" data-act="new-param">Add parameter</button>`)
+      ? empty('No parameters yet', 'Type a name in the bar above and press Add, or use New parameter for several reference lines or a dropdown.', html`<button class="btn btn-primary" data-act="quick-focus" data-testid="button-first-parameter">Add the first parameter</button>`)
       : html`<table class="tbl">
         <thead><tr><th>Order</th><th>Code</th><th>Name</th><th>Type</th><th>Unit</th><th>Reference / normal ranges</th><th>Req</th><th>Status</th><th></th></tr></thead>
         <tbody>${plist.map((p, i) => {
@@ -86,7 +120,7 @@ export function mount(root, params) {
         <div class="sb mono" data-testid="text-param-normal-range">${lines.length
           ? html`${lines.map((line, i) => html`<div data-testid="text-param-normal-range-${i}">${line}</div>`)}`
           : html`<span class="muted">Not configured</span>`}</div>
-        <div class="xs muted" style="margin-top:4px">Printed line by line on the report. Nothing is compared against them.</div>
+        <div class="xs muted" style="margin-top:4px">Printed line by line on the report. A result outside these lines prints in red.</div>
         ${lines.length === 0 ? html`<div class="note-warn" style="margin:8px 0 0" data-testid="text-range-not-configured">Not configured. Results show no reference until a line is added.</div>` : ''}
       </div>
       ${sel.dataType === 'Dropdown' ? html`<div class="aside-sec">
@@ -125,14 +159,31 @@ export function mount(root, params) {
     retry: () => load('catalog'),
     'toggle-test': () => { const { test } = ctx(); if (test) run(() => mutate(() => api.saveTest({ ...test, active: !test.active }))); },
     'edit-test': () => { const { test, ix } = ctx(); if (test) openTestEditor({ test, ix }); },
-    'new-param': () => { const { plist } = ctx(); openParameterEditor({ testId: id, nextOrder: (plist[plist.length - 1]?.displayOrder ?? 0) + 10, onSaved: (p) => { selId = p.id; update(); } }); },
-    'edit-param': (el, e) => { e.stopPropagation(); const { plist, ix } = ctx(); const p = ix.paramById.get(Number(el.dataset.id)); if (p) openParameterEditor({ testId: id, param: p, nextOrder: (plist[plist.length - 1]?.displayOrder ?? 0) + 10, onSaved: (s) => { selId = s.id; update(); } }); },
+    'quick-add': () => quickAdd(),
+    'quick-focus': () => quick('name').focus(),
+    'new-param': () => { const { plist } = ctx(); openParameterEditor({ testId: id, nextOrder: (plist[plist.length - 1]?.displayOrder ?? 0) + 10, taken: plist.map((p) => p.code), onSaved: (p) => { selId = p.id; update(); } }); },
+    'edit-param': (el, e) => {
+      e.stopPropagation();
+      const { plist, ix } = ctx();
+      const p = ix.paramById.get(Number(el.dataset.id));
+      if (!p) return;
+      const taken = plist.filter((x) => x.id !== p.id).map((x) => x.code);
+      openParameterEditor({ testId: id, param: p, nextOrder: (plist[plist.length - 1]?.displayOrder ?? 0) + 10, taken, onSaved: (s) => { selId = s.id; update(); } });
+    },
     'toggle-param': (el, e) => { e.stopPropagation(); const p = ctx().ix.paramById.get(Number(el.dataset.id)); if (p) run(() => mutate(() => api.saveParameter({ ...p, active: !p.active }))); },
     'sel-param': (el) => { selId = Number(el.dataset.id); update(); },
     move: (el, e) => { e.stopPropagation(); move(Number(el.dataset.i), Number(el.dataset.dir)); },
     'new-option': () => { const { sel, opts } = ctx(); if (sel) openOptionEditor({ parameterId: sel.id, nextOrder: (opts[opts.length - 1]?.sortOrder ?? 0) + 10 }); },
     'edit-option': (el) => { const { sel, opts } = ctx(); const o = opts.find((x) => x.id === Number(el.dataset.id)); if (sel && o) openOptionEditor({ parameterId: sel.id, option: o, nextOrder: (opts[opts.length - 1]?.sortOrder ?? 0) + 10 }); },
     'toggle-option': (el) => { const o = ctx().opts.find((x) => x.id === Number(el.dataset.id)); if (o) run(() => mutate(() => api.saveOption({ ...o, active: !o.active }))); },
+  });
+  // Enter anywhere in the quick bar adds the parameter now; the caret stays in
+  // Name so the next one can be typed straight away.
+  root.querySelectorAll('[data-quick]').forEach((el) => {
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); quickAdd(); }
+    });
+    el.addEventListener('input', () => el.classList.remove('err'));
   });
   load('catalog');
   update();

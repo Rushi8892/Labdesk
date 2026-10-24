@@ -33,13 +33,18 @@ IF DB_ID(N'PathologyTests') IS NULL
     CREATE DATABASE [PathologyTests];
 ```
 
-Select `PathologyTests` in SSMS, then open and execute these two files in order:
+Select `PathologyTests` in SSMS, then open and execute these three files in order:
 
 1. `database/schema.sql` creates the tables and indexes. It uses existence
    checks, so it can be run again without dropping data.
 2. `database/seed.sql` inserts the starter categories, specimen types, tests
    and parameters, including audit entries. It runs only when the catalog has
    no tests; rerunning it won't overwrite a lab's catalog.
+3. `database/seed-menu.sql` is the lab's own menu: every test, parameter, unit,
+   reference range and dropdown option, with the BT/CT/PT/INR ranges this lab
+   uses. It is safe to run again and it is the authority: rows missing from it
+   are deleted when no result refers to them, and only switched inactive when
+   one does, so old reports keep printing.
 
 Storage is one table per concept, with the relationships enforced by the
 database itself:
@@ -68,6 +73,7 @@ installed, the equivalent commands are:
 sqlcmd -S "(localdb)\MSSQLLocalDB" -E -b -Q "IF DB_ID(N'PathologyTests') IS NULL CREATE DATABASE [PathologyTests];"
 sqlcmd -S "(localdb)\MSSQLLocalDB" -d "PathologyTests" -E -b -I -i ".\database\schema.sql"
 sqlcmd -S "(localdb)\MSSQLLocalDB" -d "PathologyTests" -E -b -I -i ".\database\seed.sql"
+sqlcmd -S "(localdb)\MSSQLLocalDB" -d "PathologyTests" -E -b -I -f 65001 -i ".\database\seed-menu.sql"
 ```
 
 For SQL Server Express, use your instance name instead, for example
@@ -182,6 +188,13 @@ The SQL Server schema and seed files can also be run directly in SSMS.
 
 The catalog remains laboratory-editable. Each parameter carries its own reference
 lines, which the laboratory enters; the application must not invent one.
+
+Adding a test asks only for what a test cannot exist without (code, name, category,
+specimen); everything else sits under "More details". Its parameters are typed
+straight into the bar above the list - name, unit, reference, type, Add, Enter -
+and the code is made from the name, so a menu of parameters needs no dialog each.
+The parameter dialog keeps the same five essentials on its face and still exposes
+the limits and notes underneath when they are actually needed.
 
 Those reference lines are also read back: a result outside them prints in red (and
 types in red on the entry screen). `js/lab.js` (`isAbnormal`) understands the shapes
@@ -329,6 +342,7 @@ publish.ps1
 database/
 ├── schema.sql                 # Idempotent SQL Server tables and indexes
 ├── seed.sql                   # Idempotent SQL Server starter catalog
+├── seed-menu.sql              # Idempotent master menu: this lab's tests, ranges and options
 ├── migrate-normal-ranges.sql  # One-off upgrade of an older database
 └── drop-legacy.sql            # One-off removal of the old JSON table
 docs/

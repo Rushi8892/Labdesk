@@ -8,7 +8,16 @@
   <div class="split">
     <section class="col" style="flex:1;min-width:0;border-right:1px solid hsl(var(--border))">
       <div class="sec-head"><div class="b">Parameters <span class="mono muted" data-slot="pcount"></span></div>
-        <button class="btn btn-primary btn-sm" data-act="new-param" data-testid="button-new-parameter"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> Add parameter</button></div>
+        <button class="btn btn-primary btn-sm" data-act="new-param" data-testid="button-new-parameter"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> New parameter&hellip;</button></div>
+      <div class="quick-add no-print" data-slot="quick">
+        <input class="input" data-quick="name" placeholder="Parameter name" aria-label="Parameter name" data-testid="input-quick-name">
+        <input class="input" data-quick="unit" placeholder="Unit" aria-label="Unit" data-testid="input-quick-unit">
+        <input class="input" data-quick="reference" placeholder="Reference, e.g. 12.0 - 15.0" aria-label="Reference" data-testid="input-quick-reference">
+        <select class="select" data-quick="dataType" aria-label="Data type" data-testid="select-quick-type">
+          <option>Numeric</option><option>Text</option><option>Dropdown</option><option>Boolean</option><option>Date</option>
+        </select>
+        <button class="btn btn-primary btn-sm" data-act="quick-add" data-testid="button-quick-add">Add</button>
+      </div>
       <div class="scroll flex-1" data-slot="params"></div>
     </section>
     <aside class="aside" data-slot="aside"></aside>
