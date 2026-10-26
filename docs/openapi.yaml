@@ -83,7 +83,9 @@ paths:
       description: >
         A parameter carries its own reference lines. normalRanges is an array of
         the lines a report prints, one entry per line, so sex or age bands are
-        simply extra entries. Nothing is compared against them.
+        simply extra entries. A value outside them prints in red. Section names
+        the heading the parameter prints under (for example "Microscopic
+        Examination"); leave it empty for the usual one-table report.
       requestBody:
         required: true
         content:
@@ -379,6 +381,12 @@ components:
         displayOrder: { type: integer, minimum: 0 }
         active: { type: boolean }
         notes: { type: string, maxLength: 1000 }
+        section:
+          type: [string, "null"]
+          maxLength: 100
+          description: >
+            Report heading this parameter prints under, for example
+            "Microscopic Examination". Null prints one flat table.
     ParameterOption:
       type: object
       required: [parameterId, code, label, sortOrder, active]
@@ -457,6 +465,7 @@ components:
           description: The reference lines frozen with the report; empty when none were set
         displayOrder: { type: integer }
         optionLabel: { type: [string, "null"] }
+        section: { type: [string, "null"], description: The heading frozen with the report; null for a flat table }
     ReportSnapshot:
       type: object
       required: [resultId, testName, testCode, patientName, age, sex, collectedAt, completedAt, lines]

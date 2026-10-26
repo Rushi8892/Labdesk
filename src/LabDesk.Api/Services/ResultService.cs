@@ -184,7 +184,7 @@ public sealed class ResultService(ResultRepository results, CatalogRepository ca
                 var option = options.FirstOrDefault(candidate =>
                     candidate.ParameterId == parameter.Id && candidate.Code == value.Value);
                 return new ReportLine(parameter.Name, parameter.Code, parameter.Unit, value.Value,
-                    value.NormalRanges ?? [], parameter.DisplayOrder, option?.Label);
+                    value.NormalRanges ?? [], parameter.DisplayOrder, option?.Label, parameter.Section);
             })
             .ToList();
     }

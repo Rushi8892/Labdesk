@@ -149,6 +149,9 @@ BEGIN
         -- The lines this parameter's row prints, one entry per printed line.
         -- NULL means "Not configured".
         normal_ranges NVARCHAR(MAX) NULL,
+        -- The report heading this parameter prints under, e.g. "Microscopic
+        -- Examination". NULL prints one flat table, as most tests do.
+        section NVARCHAR(100) NULL,
         display_order INT NOT NULL CONSTRAINT df_parameter_order DEFAULT 0,
         active BIT NOT NULL CONSTRAINT df_parameter_active DEFAULT 1,
         notes NVARCHAR(1000) NULL,
@@ -252,6 +255,8 @@ BEGIN
         -- Frozen with the report, exactly as entered on the parameter.
         normal_ranges NVARCHAR(MAX) NULL,
         option_label NVARCHAR(200) NULL,
+        -- Frozen with the report so the section headings print as they were.
+        section NVARCHAR(100) NULL,
         display_order INT NOT NULL CONSTRAINT df_report_line_order DEFAULT 0,
         CONSTRAINT ck_report_line_ranges_json
             CHECK (normal_ranges IS NULL OR ISJSON(normal_ranges) = 1),
@@ -259,4 +264,14 @@ BEGIN
             REFERENCES dbo.report_snapshot(id) ON DELETE CASCADE
     );
 END
+GO
+
+-- Columns added after the first release: a database created before them gets
+-- them here, and a new one already has them from the CREATE TABLE above.
+IF COL_LENGTH(N'dbo.test_parameter', N'section') IS NULL
+    ALTER TABLE dbo.test_parameter ADD section NVARCHAR(100) NULL;
+GO
+
+IF COL_LENGTH(N'dbo.report_line', N'section') IS NULL
+    ALTER TABLE dbo.report_line ADD section NVARCHAR(100) NULL;
 GO

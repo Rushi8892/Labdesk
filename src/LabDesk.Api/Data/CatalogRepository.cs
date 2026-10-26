@@ -207,13 +207,13 @@ public sealed class CatalogRepository(Database database, AuditRepository audit)
 
     private const string ParameterSelect = "SELECT id, test_id, code, name, data_type, unit, result_format, " +
         "decimal_places, required, allow_negative, technical_min, technical_max, normal_ranges, " +
-        "display_order, active, notes FROM dbo.test_parameter";
+        "display_order, active, notes, section FROM dbo.test_parameter";
 
     private static TestParameter ReadParameter(SqlDataReader reader) => new(
         reader.GetInt32(0), reader.GetInt32(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
         Sql.Text(reader, 5), Sql.Text(reader, 6), Sql.Int(reader, 7), Sql.Flag(reader, 8), Sql.Flag(reader, 9),
         Sql.Decimal(reader, 10), Sql.Decimal(reader, 11), Sql.Ranges(reader, 12),
-        reader.GetInt32(13), Sql.Flag(reader, 14), Sql.Text(reader, 15));
+        reader.GetInt32(13), Sql.Flag(reader, 14), Sql.Text(reader, 15), Sql.Text(reader, 16));
 
     public async Task<List<TestParameter>> ParametersAsync(int? testId = null)
     {
@@ -260,6 +260,7 @@ public sealed class CatalogRepository(Database database, AuditRepository audit)
         Sql.Bind(command, "@displayOrder", parameter.DisplayOrder);
         Sql.Bind(command, "@active", parameter.Active);
         Sql.Bind(command, "@notes", parameter.Notes);
+        Sql.Bind(command, "@section", parameter.Section);
     }
 
     public async Task<TestParameter> SaveParameterAsync(TestParameter parameter, AuditNote note)
@@ -275,10 +276,10 @@ public sealed class CatalogRepository(Database database, AuditRepository audit)
                     insert.Transaction = transaction;
                     insert.CommandText = "INSERT INTO dbo.test_parameter (test_id, code, name, data_type, unit, " +
                         "result_format, decimal_places, required, allow_negative, technical_min, technical_max, " +
-                        "normal_ranges, display_order, active, notes) " +
+                        "normal_ranges, display_order, active, notes, section) " +
                         "OUTPUT INSERTED.id VALUES (@testId, @code, @name, @dataType, @unit, @resultFormat, " +
                         "@decimalPlaces, @required, @allowNegative, @technicalMin, @technicalMax, @normalRanges, " +
-                        "@displayOrder, @active, @notes)";
+                        "@displayOrder, @active, @notes, @section)";
                     BindParameter(insert, parameter);
                     id = Convert.ToInt32(await insert.ExecuteScalarAsync());
                 }
@@ -290,7 +291,7 @@ public sealed class CatalogRepository(Database database, AuditRepository audit)
                     update.CommandText = "UPDATE dbo.test_parameter SET code=@code, name=@name, data_type=@dataType, " +
                         "unit=@unit, result_format=@resultFormat, decimal_places=@decimalPlaces, required=@required, " +
                         "allow_negative=@allowNegative, technical_min=@technicalMin, technical_max=@technicalMax, " +
-                        "normal_ranges=@normalRanges, " +
+                        "normal_ranges=@normalRanges, section=@section, " +
                         "display_order=@displayOrder, active=@active, notes=@notes WHERE id=@id";
                     BindParameter(update, parameter);
                     Sql.Bind(update, "@id", id);

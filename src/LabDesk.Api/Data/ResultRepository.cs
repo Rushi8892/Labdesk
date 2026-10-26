@@ -111,7 +111,7 @@ public sealed class ResultRepository(Database database, AuditRepository audit)
         await reader.CloseAsync();
 
         await using var lines = connection.CreateCommand();
-        lines.CommandText = "SELECT name, code, unit, value, normal_ranges, option_label, display_order " +
+        lines.CommandText = "SELECT name, code, unit, value, normal_ranges, option_label, display_order, section " +
             "FROM dbo.report_line WHERE snapshot_id=@snapshotId ORDER BY display_order, id";
         Sql.Bind(lines, "@snapshotId", snapshotId);
         await using var lineReader = await lines.ExecuteReaderAsync();
@@ -119,7 +119,8 @@ public sealed class ResultRepository(Database database, AuditRepository audit)
         while (await lineReader.ReadAsync())
         {
             report.Add(new ReportLine(lineReader.GetString(0), lineReader.GetString(1), Sql.Text(lineReader, 2),
-                Sql.Text(lineReader, 3), Sql.Ranges(lineReader, 4), lineReader.GetInt32(6), Sql.Text(lineReader, 5)));
+                Sql.Text(lineReader, 3), Sql.Ranges(lineReader, 4), lineReader.GetInt32(6), Sql.Text(lineReader, 5),
+                Sql.Text(lineReader, 7)));
         }
 
         return snapshot with { Lines = report };
@@ -223,8 +224,8 @@ public sealed class ResultRepository(Database database, AuditRepository audit)
                     await using var insertLine = connection.CreateCommand();
                     insertLine.Transaction = transaction;
                     insertLine.CommandText = "INSERT INTO dbo.report_line (snapshot_id, name, code, unit, value, " +
-                        "normal_ranges, option_label, display_order) VALUES (@snapshotId, @name, @code, @unit, " +
-                        "@value, @normalRanges, @optionLabel, @displayOrder)";
+                        "normal_ranges, option_label, display_order, section) VALUES (@snapshotId, @name, @code, @unit, " +
+                        "@value, @normalRanges, @optionLabel, @displayOrder, @section)";
                     Sql.Bind(insertLine, "@snapshotId", snapshotId);
                     Sql.Bind(insertLine, "@name", line.Name);
                     Sql.Bind(insertLine, "@code", line.Code);
@@ -233,6 +234,7 @@ public sealed class ResultRepository(Database database, AuditRepository audit)
                     Sql.Bind(insertLine, "@normalRanges", Sql.Json(line.NormalRanges));
                     Sql.Bind(insertLine, "@optionLabel", line.OptionLabel);
                     Sql.Bind(insertLine, "@displayOrder", line.DisplayOrder);
+                    Sql.Bind(insertLine, "@section", line.Section);
                     await insertLine.ExecuteNonQueryAsync();
                 }
             }

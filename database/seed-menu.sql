@@ -1,22 +1,28 @@
 /* =====================================================================
    Master test menu: the lab's own catalogue.
 
-   Source: lab_tests_parameters.pdf (31 tests) + Dengue + CBC details.
+   Source: lab_tests_parameters.pdf (31 tests) + Dengue + CBC details
+           + Urine Routine Examination + Stool Examination.
    This file is the authority for the catalogue, so it is safe to re-run:
    it inserts what is missing and rewrites names, units, reference ranges
-   and dropdown options in place.
+   and dropdown options in place. A parameter's Section groups the report
+   under a heading ("Microscopic Examination"); blank prints one table.
 
    Rows that are no longer in this list are removed when nothing recorded
    a value against them. When a result already references them they are
    kept, so old reports still render, but switched inactive so they stop
    being offered at result entry.
 
-   Run after schema.sql and seed.sql:
-       sqlcmd -S "(localdb)\MSSQLLocalDB" -d PathologyTests -E -i database/seed-menu.sql
+   Run after schema.sql and seed.sql. Save this file as UTF-8 with BOM
+   (it contains the micro sign) and run with -f 65001:
+       sqlcmd -S "(localdb)\MSSQLLocalDB" -d PathologyTests -E -f 65001 -i database/seed-menu.sql
    ===================================================================== */
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 BEGIN TRANSACTION;
+
+/* 0. Urine and stool use the categories and specimens seed.sql already ships:
+   URI / UR for urine, MIC / ST for stool. Nothing new to insert. */
 
 DECLARE @Tests TABLE
 (
@@ -60,7 +66,17 @@ INSERT INTO @Tests (Code, Name, CategoryCode, SpecimenCode, DisplayOrder, Notes)
     ('TROPI',   N'Troponin-I',                                            'BIO',      'SER', 290, NULL),
     ('BTCT',    N'Bleeding Time - Clotting Time',                         'HEM',      'WB',  300, N'BT by Duke method. CT by capillary method; both are method-dependent.'),
     ('PTINR',   N'Prothrombin Time - International Normalized Ratio',     'HEM',      'PL',  310, NULL),
-    ('DENGUE',  N'Dengue',                                                'SEROLOGY', 'SER', 320, NULL);
+    ('DENGUE',  N'Dengue',                                                'SEROLOGY', 'SER', 320, NULL),
+    ('URINE',   N'Urine Routine Examination',                             'URI',      'UR',  330, N'HPF = High Power Field. Reference ranges may vary by laboratory method and reporting protocol.'),
+    ('STOOL',   N'Stool Examination',                                     'MIC',      'ST',  340, N'HPF = High Power Field; LPF = Low Power Field. Reference ranges may vary by laboratory method, microscope technique and reporting protocol. Kindly correlate clinically.');
+
+/* Fail loudly if any test points at a category or specimen that does not
+   exist, instead of silently skipping it. */
+IF EXISTS (
+    SELECT 1 FROM @Tests s
+    WHERE NOT EXISTS (SELECT 1 FROM dbo.category c WHERE c.code = s.CategoryCode)
+       OR NOT EXISTS (SELECT 1 FROM dbo.specimen sp WHERE sp.code = s.SpecimenCode))
+    THROW 50001, 'seed-menu: a test refers to a category or specimen code that does not exist.', 1;
 
 DECLARE @Params TABLE
 (
@@ -72,6 +88,7 @@ DECLARE @Params TABLE
     Ranges NVARCHAR(MAX) NULL,
     DisplayOrder INT NOT NULL,
     Notes NVARCHAR(1000) NULL,
+    Section NVARCHAR(100) NULL,
     PRIMARY KEY (TestCode, Code)
 );
 
@@ -167,7 +184,69 @@ INSERT INTO @Params (TestCode, Code, Name, DataType, Unit, Ranges, DisplayOrder,
     -- Dengue
     ('DENGUE', 'NS1', N'NS1 Antigen',                                   'Dropdown', NULL,         N'["Negative"]',    10, NULL),
     ('DENGUE', 'IGG', N'IgG Antibody',                                  'Dropdown', NULL,         N'["Negative"]',    20, NULL),
-    ('DENGUE', 'IGM', N'IgM Antibody',                                  'Dropdown', NULL,         N'["Negative"]',    30, NULL);
+    ('DENGUE', 'IGM', N'IgM Antibody',                                  'Dropdown', NULL,         N'["Negative"]',    30, NULL),
+    -- Urine Routine Examination (physical)
+    ('URINE', 'COLOUR', N'Colour',                                      'Dropdown', NULL,         N'["Pale yellow","Yellow"]', 10, NULL),
+    ('URINE', 'APPEAR', N'Appearance',                                  'Dropdown', NULL,         N'["Clear"]',       20, NULL),
+    ('URINE', 'SG',     N'Specific Gravity',                            'Numeric',  NULL,         N'["1.005 - 1.030"]', 30, NULL),
+    ('URINE', 'PH',     N'pH',                                          'Numeric',  NULL,         N'["4.5 - 8.0"]',   40, NULL),
+    -- Urine Routine Examination (chemical)
+    ('URINE', 'PROT',   N'Protein',                                     'Dropdown', NULL,         N'["Negative"]',    50, NULL),
+    ('URINE', 'GLU',    N'Glucose',                                     'Dropdown', NULL,         N'["Negative"]',    60, NULL),
+    ('URINE', 'KET',    N'Ketones',                                     'Dropdown', NULL,         N'["Negative"]',    70, NULL),
+    ('URINE', 'BLOOD',  N'Blood',                                       'Dropdown', NULL,         N'["Negative"]',    80, NULL),
+    ('URINE', 'BILE',   N'Bile Pigments',                               'Dropdown', NULL,         N'["Negative"]',    90, NULL),
+    ('URINE', 'NIT',    N'Nitrite',                                     'Dropdown', NULL,         N'["Negative"]',    100, NULL),
+    ('URINE', 'LE',     N'Leukocyte Esterase',                          'Dropdown', NULL,         N'["Negative"]',    110, NULL),
+    -- Urine Routine Examination (microscopic)
+    ('URINE', 'PUS',    N'Pus Cells',                                   'Dropdown', N'/HPF',      N'["Nil","0 - 2"]', 120, NULL),
+    ('URINE', 'RBC',    N'RBC',                                         'Dropdown', N'/HPF',      N'["Nil"]',         130, NULL),
+    ('URINE', 'EPI',    N'Epithelial Cells',                            'Dropdown', N'/HPF',      N'["Nil","0 - 2"]', 140, NULL),
+    ('URINE', 'CAST',   N'Casts',                                       'Dropdown', NULL,         N'["Nil"]',         150, NULL),
+    ('URINE', 'CRYST',  N'Crystals',                                    'Dropdown', NULL,         N'["Nil"]',         160, NULL),
+    ('URINE', 'BACT',   N'Bacteria',                                    'Dropdown', NULL,         N'["Not seen"]',    170, NULL),
+    -- Stool Examination (macroscopic)
+    ('STOOL', 'COLOUR', N'Colour',                                      'Dropdown', NULL,         N'["Brown","Yellowish brown"]', 10, NULL),
+    ('STOOL', 'CONS',   N'Appearance (Consistency)',                    'Dropdown', NULL,         N'["Formed","Semi-formed"]', 20, NULL),
+    ('STOOL', 'ODOUR',  N'Odour',                                       'Dropdown', NULL,         N'["Characteristic"]', 30, NULL),
+    ('STOOL', 'MUCUS',  N'Mucus',                                       'Dropdown', NULL,         N'["Absent","Occasional"]', 40, NULL),
+    ('STOOL', 'BLOOD',  N'Blood',                                       'Dropdown', NULL,         N'["Absent"]',      50, NULL),
+    ('STOOL', 'FOOD',   N'Undigested Food Particles',                   'Dropdown', NULL,         N'["Absent","Occasional"]', 60, NULL),
+    ('STOOL', 'VOL',    N'Volume',                                      'Dropdown', NULL,         NULL,               70, N'Not routinely interpreted.'),
+    -- Stool Examination (microscopic)
+    ('STOOL', 'PUS',    N'Pus Cells (WBC)',                             'Dropdown', N'/HPF',      N'["Nil","Occasional","0 - 2","2 - 5"]', 80, N'Normal: 0 - 5 /HPF.'),
+    ('STOOL', 'RBC',    N'RBC (Red Blood Cells)',                       'Dropdown', N'/HPF',      N'["Nil","0 - 2"]', 90, N'Normal: 0 - 2 /HPF.'),
+    ('STOOL', 'EPI',    N'Epithelial Cells',                            'Dropdown', N'/HPF',      N'["Nil","0 - 2"]', 100, N'Normal: 0 - 2 /HPF.'),
+    ('STOOL', 'FAT',    N'Fat Droplets',                                'Dropdown', NULL,         N'["Nil","Occasional"]', 110, NULL),
+    ('STOOL', 'MUSCLE', N'Muscle Fibers',                               'Dropdown', NULL,         N'["Nil","Occasional"]', 120, NULL),
+    ('STOOL', 'VEG',    N'Vegetable Fibers',                            'Dropdown', NULL,         N'["Few","Occasional"]', 130, NULL),
+    ('STOOL', 'STARCH', N'Starch Granules',                             'Dropdown', NULL,         N'["Nil","Occasional"]', 140, NULL),
+    ('STOOL', 'CASTS',  N'Casts',                                       'Dropdown', NULL,         N'["Nil"]',         150, NULL),
+    ('STOOL', 'CRYST',  N'Crystals',                                    'Dropdown', NULL,         N'["Nil","Occasional"]', 160, NULL),
+    ('STOOL', 'BACT',   N'Bacteria',                                    'Dropdown', NULL,         N'["Few","Moderate"]', 170, NULL),
+    ('STOOL', 'YEAST',  N'Yeast Cells',                                 'Dropdown', NULL,         N'["Nil"]',         180, NULL),
+    ('STOOL', 'MTHR',   N'Mucus Threads',                               'Dropdown', NULL,         N'["Nil","Occasional"]', 190, NULL),
+    -- Stool Examination (ova and parasites)
+    ('STOOL', 'OVA',    N'Ova (Eggs)',                                  'Dropdown', NULL,         N'["Not seen"]',    200, NULL),
+    ('STOOL', 'CYST',   N'Cysts',                                       'Dropdown', NULL,         N'["Not seen"]',    210, NULL),
+    ('STOOL', 'TROPH',  N'Trophozoites',                                'Dropdown', NULL,         N'["Not seen"]',    220, NULL),
+    ('STOOL', 'HELM',   N'Helminths (Worms)',                           'Dropdown', NULL,         N'["Not seen"]',    230, NULL);
+
+/* Urine and stool print their rows under group headings; every other test
+   prints one flat table. The heading follows the display-order runs above. */
+UPDATE @Params SET Section = N'Physical Examination'
+    WHERE TestCode = 'URINE' AND Code IN ('COLOUR', 'APPEAR', 'SG', 'PH');
+UPDATE @Params SET Section = N'Chemical Examination'
+    WHERE TestCode = 'URINE' AND Code IN ('PROT', 'GLU', 'KET', 'BLOOD', 'BILE', 'NIT', 'LE');
+UPDATE @Params SET Section = N'Microscopic Examination'
+    WHERE TestCode = 'URINE' AND Code IN ('PUS', 'RBC', 'EPI', 'CAST', 'CRYST', 'BACT');
+UPDATE @Params SET Section = N'Macroscopic Examination'
+    WHERE TestCode = 'STOOL' AND Code IN ('COLOUR', 'CONS', 'ODOUR', 'MUCUS', 'BLOOD', 'FOOD', 'VOL');
+UPDATE @Params SET Section = N'Microscopic Examination'
+    WHERE TestCode = 'STOOL' AND Code IN ('PUS', 'RBC', 'EPI', 'FAT', 'MUSCLE', 'VEG', 'STARCH',
+        'CASTS', 'CRYST', 'BACT', 'YEAST', 'MTHR');
+UPDATE @Params SET Section = N'Ova & Parasites (O&P)'
+    WHERE TestCode = 'STOOL' AND Code IN ('OVA', 'CYST', 'TROPH', 'HELM');
 
 DECLARE @Options TABLE
 (
@@ -221,6 +300,157 @@ INSERT INTO @Options (TestCode, ParamCode, Code, Label, SortOrder) VALUES
     ('DENGUE',  'IGM',    'NEG', N'Negative', 10),
     ('DENGUE',  'IGM',    'POS', N'Positive', 20);
 
+/* Urine and stool dropdowns share a handful of option lists, so they are
+   defined once as named sets and attached to parameters below. */
+DECLARE @OptionSets TABLE
+(
+    SetCode VARCHAR(40) NOT NULL,
+    Code VARCHAR(20) NOT NULL,
+    Label NVARCHAR(100) NOT NULL,
+    SortOrder INT NOT NULL,
+    PRIMARY KEY (SetCode, Code)
+);
+
+INSERT INTO @OptionSets (SetCode, Code, Label, SortOrder) VALUES
+    -- Graded dipstick result
+    ('GRADE',  'NEG',   N'Negative', 10),
+    ('GRADE',  'TRACE', N'Trace',    20),
+    ('GRADE',  'P1',    N'1+',       30),
+    ('GRADE',  'P2',    N'2+',       40),
+    ('GRADE',  'P3',    N'3+',       50),
+    ('GRADE',  'P4',    N'4+',       60),
+    -- Negative / Positive
+    ('NEGPOS', 'NEG',   N'Negative', 10),
+    ('NEGPOS', 'POS',   N'Positive', 20),
+    -- Cells per high power field
+    ('HPF',    'NIL',   N'Nil',        10),
+    ('HPF',    'OCC',   N'Occasional', 20),
+    ('HPF',    'B0_2',  N'0 - 2',      30),
+    ('HPF',    'B2_5',  N'2 - 5',      40),
+    ('HPF',    'B5_10', N'5 - 10',     50),
+    ('HPF',    'B10_20',N'10 - 20',    60),
+    ('HPF',    'B20_30',N'20 - 30',    70),
+    ('HPF',    'GT30',  N'> 30',       80),
+    -- Urine physical
+    ('U_COLOUR','COLRLS', N'Colourless',  10),
+    ('U_COLOUR','PALE',   N'Pale yellow', 20),
+    ('U_COLOUR','YEL',    N'Yellow',      30),
+    ('U_COLOUR','DYEL',   N'Dark yellow', 40),
+    ('U_COLOUR','AMB',    N'Amber',       50),
+    ('U_COLOUR','RED',    N'Red',         60),
+    ('U_COLOUR','BRN',    N'Brown',       70),
+    ('U_APPEAR','CLEAR',  N'Clear',          10),
+    ('U_APPEAR','SLTURB', N'Slightly turbid',20),
+    ('U_APPEAR','TURB',   N'Turbid',         30),
+    -- Urine microscopic
+    ('U_CASTS', 'NIL',   N'Nil',           10),
+    ('U_CASTS', 'HYAL',  N'Hyaline casts', 20),
+    ('U_CASTS', 'GRAN',  N'Granular casts',30),
+    ('U_CASTS', 'RBCC',  N'RBC casts',     40),
+    ('U_CASTS', 'WBCC',  N'WBC casts',     50),
+    ('U_CASTS', 'WAXY',  N'Waxy casts',    60),
+    ('U_CRYST', 'NIL',   N'Nil',                  10),
+    ('U_CRYST', 'CAOX',  N'Calcium oxalate',      20),
+    ('U_CRYST', 'URIC',  N'Uric acid',            30),
+    ('U_CRYST', 'TRIP',  N'Triple phosphate',     40),
+    ('U_CRYST', 'AMUR',  N'Amorphous urates',     50),
+    ('U_CRYST', 'AMPH',  N'Amorphous phosphates', 60),
+    ('U_CRYST', 'OTH',   N'Other',                70),
+    ('U_BACT',  'NSEEN', N'Not seen', 10),
+    ('U_BACT',  'FEW',   N'Few',      20),
+    ('U_BACT',  'MOD',   N'Moderate', 30),
+    ('U_BACT',  'MANY',  N'Many',     40),
+    -- Stool macroscopic
+    ('S_COLOUR','BRN',   N'Brown',           10),
+    ('S_COLOUR','YBRN',  N'Yellowish brown', 20),
+    ('S_COLOUR','DBRN',  N'Dark brown',      30),
+    ('S_COLOUR','YEL',   N'Yellow',          40),
+    ('S_COLOUR','GRN',   N'Green',           50),
+    ('S_COLOUR','BLK',   N'Black',           60),
+    ('S_COLOUR','RED',   N'Red',             70),
+    ('S_COLOUR','CLAY',  N'Clay coloured',   80),
+    ('S_CONS',  'FORMED',N'Formed',      10),
+    ('S_CONS',  'SEMI',  N'Semi-formed', 20),
+    ('S_CONS',  'SOFT',  N'Soft',        30),
+    ('S_CONS',  'LOOSE', N'Loose',       40),
+    ('S_CONS',  'WATERY',N'Watery',      50),
+    ('S_CONS',  'HARD',  N'Hard',        60),
+    ('S_ODOUR', 'CHAR',  N'Characteristic', 10),
+    ('S_ODOUR', 'OFFN',  N'Offensive',      20),
+    ('ABS_OCC_PRES','ABS', N'Absent',     10),
+    ('ABS_OCC_PRES','OCC', N'Occasional', 20),
+    ('ABS_OCC_PRES','PRES',N'Present',    30),
+    ('ABS_PRES','ABS',   N'Absent',  10),
+    ('ABS_PRES','PRES',  N'Present', 20),
+    ('S_VOL',   'NA',    N'Not applicable', 10),
+    ('S_VOL',   'SCANTY',N'Scanty',         20),
+    ('S_VOL',   'MOD',   N'Moderate',       30),
+    ('S_VOL',   'COPIOUS',N'Copious',       40),
+    -- Stool microscopic
+    ('NIL_SCALE','NIL',  N'Nil',        10),
+    ('NIL_SCALE','OCC',  N'Occasional', 20),
+    ('NIL_SCALE','FEW',  N'Few',        30),
+    ('NIL_SCALE','MOD',  N'Moderate',   40),
+    ('NIL_SCALE','MANY', N'Many',       50),
+    ('NIL_PRES','NIL',   N'Nil',     10),
+    ('NIL_PRES','PRES',  N'Present', 20),
+    -- Ova and parasites
+    ('SEEN',    'NSEEN', N'Not seen', 10),
+    ('SEEN',    'SEEN',  N'Seen',     20);
+
+DECLARE @ParamSets TABLE
+(
+    TestCode VARCHAR(40) NOT NULL,
+    ParamCode VARCHAR(40) NOT NULL,
+    SetCode VARCHAR(40) NOT NULL,
+    PRIMARY KEY (TestCode, ParamCode)
+);
+
+INSERT INTO @ParamSets (TestCode, ParamCode, SetCode) VALUES
+    ('URINE', 'COLOUR', 'U_COLOUR'),
+    ('URINE', 'APPEAR', 'U_APPEAR'),
+    ('URINE', 'PROT',   'GRADE'),
+    ('URINE', 'GLU',    'GRADE'),
+    ('URINE', 'KET',    'GRADE'),
+    ('URINE', 'BLOOD',  'GRADE'),
+    ('URINE', 'BILE',   'NEGPOS'),
+    ('URINE', 'NIT',    'NEGPOS'),
+    ('URINE', 'LE',     'GRADE'),
+    ('URINE', 'PUS',    'HPF'),
+    ('URINE', 'RBC',    'HPF'),
+    ('URINE', 'EPI',    'HPF'),
+    ('URINE', 'CAST',   'U_CASTS'),
+    ('URINE', 'CRYST',  'U_CRYST'),
+    ('URINE', 'BACT',   'U_BACT'),
+    ('STOOL', 'COLOUR', 'S_COLOUR'),
+    ('STOOL', 'CONS',   'S_CONS'),
+    ('STOOL', 'ODOUR',  'S_ODOUR'),
+    ('STOOL', 'MUCUS',  'ABS_OCC_PRES'),
+    ('STOOL', 'BLOOD',  'ABS_PRES'),
+    ('STOOL', 'FOOD',   'ABS_OCC_PRES'),
+    ('STOOL', 'VOL',    'S_VOL'),
+    ('STOOL', 'PUS',    'HPF'),
+    ('STOOL', 'RBC',    'HPF'),
+    ('STOOL', 'EPI',    'HPF'),
+    ('STOOL', 'FAT',    'NIL_SCALE'),
+    ('STOOL', 'MUSCLE', 'NIL_SCALE'),
+    ('STOOL', 'VEG',    'NIL_SCALE'),
+    ('STOOL', 'STARCH', 'NIL_SCALE'),
+    ('STOOL', 'CASTS',  'NIL_PRES'),
+    ('STOOL', 'CRYST',  'NIL_SCALE'),
+    ('STOOL', 'BACT',   'NIL_SCALE'),
+    ('STOOL', 'YEAST',  'NIL_SCALE'),
+    ('STOOL', 'MTHR',   'NIL_SCALE'),
+    ('STOOL', 'OVA',    'SEEN'),
+    ('STOOL', 'CYST',   'SEEN'),
+    ('STOOL', 'TROPH',  'SEEN'),
+    ('STOOL', 'HELM',   'SEEN');
+
+INSERT INTO @Options (TestCode, ParamCode, Code, Label, SortOrder)
+SELECT ps.TestCode, ps.ParamCode, os.Code, os.Label, os.SortOrder
+FROM @ParamSets ps
+JOIN @OptionSets os ON os.SetCode = ps.SetCode;
+
 /* 1. Tests: update what exists, insert what is missing. */
 UPDATE t
 SET name = s.Name,
@@ -239,7 +469,7 @@ INSERT INTO dbo.test (code, name, report_title, category_id, specimen_id, displa
 SELECT s.Code, s.Name, s.Name, c.id, sp.id, s.DisplayOrder, s.Notes, 1
 FROM @Tests s
 JOIN dbo.category c ON c.code = s.CategoryCode
-JOIN dbo.specimen sp ON sp.Code = s.SpecimenCode
+JOIN dbo.specimen sp ON sp.code = s.SpecimenCode
 WHERE NOT EXISTS (SELECT 1 FROM dbo.test t WHERE t.code = s.Code);
 
 /* 2. Parameters: update what exists, insert what is missing. */
@@ -250,13 +480,14 @@ SET name = s.Name,
     normal_ranges = s.Ranges,
     display_order = s.DisplayOrder,
     notes = s.Notes,
+    section = s.Section,
     active = 1
 FROM dbo.test_parameter p
 JOIN dbo.test t ON t.id = p.test_id
 JOIN @Params s ON s.TestCode = t.code AND s.Code = p.code;
 
-INSERT INTO dbo.test_parameter (test_id, code, name, data_type, unit, normal_ranges, display_order, notes, active)
-SELECT t.id, s.Code, s.Name, s.DataType, s.Unit, s.Ranges, s.DisplayOrder, s.Notes, 1
+INSERT INTO dbo.test_parameter (test_id, code, name, data_type, unit, normal_ranges, display_order, notes, section, active)
+SELECT t.id, s.Code, s.Name, s.DataType, s.Unit, s.Ranges, s.DisplayOrder, s.Notes, s.Section, 1
 FROM @Params s
 JOIN dbo.test t ON t.code = s.TestCode
 WHERE NOT EXISTS (SELECT 1 FROM dbo.test_parameter p WHERE p.test_id = t.id AND p.code = s.Code);

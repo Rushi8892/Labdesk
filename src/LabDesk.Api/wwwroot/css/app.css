@@ -241,7 +241,6 @@ details.more > .grid2 { margin-top: 12px; }
 .rs-sign { flex: 1; }
 .rs-sign.right { text-align: right; }
 .rs-sign-pad { height: 56px; }
-.rs-stamp { display: block; height: 100%; width: auto; }
 .rs-sign-lbl { font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: #7a8290; }
 .rs-sign-name { font-size: 11.5px; font-weight: 700; }
 .rs-sign-qual { font-size: 10px; color: #45505c; }
@@ -260,6 +259,8 @@ details.more > .grid2 { margin-top: 12px; }
 .rs-tbl th { padding: 6px 8px 6px 0; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; }
 .rs-tbl td { padding: 6px 8px 6px 0; vertical-align: top; }
 .rs-tbl tbody tr { border-bottom: 1px solid #ddd8cc; }
+/* A group heading inside a test table, e.g. Microscopic Examination. */
+.rs-tbl tbody tr.rs-sec td { padding: 12px 8px 4px 0; border-bottom: 1px solid #1a2326; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
 /* A bundle's test blocks: the letterhead and patient stay at the top only. */
 .rs-test { margin-top: 22px; }
 .rs-test .rs-top { margin-top: 0; }

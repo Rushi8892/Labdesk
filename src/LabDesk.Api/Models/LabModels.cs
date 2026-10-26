@@ -25,9 +25,12 @@ public record Test(int? Id, string Code, string Name, string? ShortName, int Cat
 // One parameter prints one or more reference lines - "Male: 65-176 ug/dL",
 // "Female: 26-170 ug/dL" - and nothing compares a result against them. There is
 // no separate interval table, no flag and no price.
+// Section is the report heading a parameter prints under ("Microscopic Examination").
+// Null prints the plain one-table report most tests use.
 public record TestParameter(int? Id, int TestId, string Code, string Name, string DataType, string? Unit,
     string? ResultFormat, int? DecimalPlaces, bool Required, bool AllowNegative, decimal? TechnicalMin,
-    decimal? TechnicalMax, string[]? NormalRanges, int DisplayOrder, bool Active, string? Notes);
+    decimal? TechnicalMax, string[]? NormalRanges, int DisplayOrder, bool Active, string? Notes,
+    string? Section = null);
 
 public record ParameterOption(int? Id, int ParameterId, string Code, string Label, int SortOrder, bool Active);
 
@@ -39,7 +42,7 @@ public record ResultInput(int? Id, int PatientId, int TestId, string CollectedAt
     bool Complete = false);
 
 public record ReportLine(string Name, string Code, string? Unit, string? Value, string[] NormalRanges,
-    int DisplayOrder, string? OptionLabel);
+    int DisplayOrder, string? OptionLabel, string? Section = null);
 
 // Frozen when the result is completed, so a later edit to the patient, the doctor
 // or the catalog cannot rewrite a report that has already been printed.

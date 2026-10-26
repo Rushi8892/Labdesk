@@ -80,6 +80,7 @@ export function openParameterEditor({ testId, param, nextOrder, taken = [], onSa
     allowNegative: param?.allowNegative ?? false, technicalMin: str(param?.technicalMin), technicalMax: str(param?.technicalMax),
     normalRanges: (param?.normalRanges ?? []).join('\n'),
     displayOrder: str(param?.displayOrder ?? nextOrder), active: param?.active ?? true, notes: param?.notes ?? '',
+    section: param?.section ?? '',
   };
   // A code is bookkeeping, so a blank one is made from the name instead of being
   // demanded. Only a code already used on this test is rejected.
@@ -108,7 +109,8 @@ export function openParameterEditor({ testId, param, nextOrder, taken = [], onSa
     ${inp('name', 'Name')}
     ${field('dataType', 'Data type', select('dataType', f.dataType, ['Numeric', 'Text', 'Dropdown', 'Boolean', 'Date'], { testid: 'select-param-dataType' }))}
     ${inp('unit', 'Unit')}
-    <div class="checks end" style="margin-top:18px">
+    ${inp('section', 'Report section', 'text', 'Optional heading, e.g. Microscopic Examination')}
+    <div class="checks end" style="margin-top:18px;grid-column:span 2">
       ${check('required', f.required, 'Required', 'check-param-required')}
       ${check('active', f.active, 'Active', 'check-param-active')}
     </div>
@@ -138,7 +140,7 @@ export function openParameterEditor({ testId, param, nextOrder, taken = [], onSa
         resultFormat: f.resultFormat, decimalPlaces: num ? toNum(f.decimalPlaces) : null, required: f.required,
         allowNegative: num ? f.allowNegative : false, technicalMin: num ? toNum(f.technicalMin) : null, technicalMax: num ? toNum(f.technicalMax) : null,
         normalRanges: linesOf(f.normalRanges).length ? linesOf(f.normalRanges) : null, displayOrder: toNum(f.displayOrder),
-        active: f.active, notes: f.notes,
+        active: f.active, notes: f.notes, section: f.section.trim() || null,
       }));
       ctx.close();
       if (onSaved) onSaved(saved);

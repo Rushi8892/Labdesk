@@ -42,7 +42,8 @@ Select `PathologyTests` in SSMS, then open and execute these three files in orde
    no tests; rerunning it won't overwrite a lab's catalog.
 3. `database/seed-menu.sql` is the lab's own menu: every test, parameter, unit,
    reference range and dropdown option, with the BT/CT/PT/INR ranges this lab
-   uses. It is safe to run again and it is the authority: rows missing from it
+   uses, plus the urine and stool tests whose parameters print under group
+   headings. It is safe to run again and it is the authority: rows missing from it
    are deleted when no result refers to them, and only switched inactive when
    one does, so old reports keep printing.
 
@@ -53,7 +54,7 @@ database itself:
 | --- | --- |
 | `category`, `specimen`, `method` | the configurable masters |
 | `test` | the tests |
-| `test_parameter` | a test's parameters, including the reference lines a report prints |
+| `test_parameter` | a test's parameters, including the reference lines a report prints and the section heading they print under |
 | `parameter_option` | the dropdown options a parameter allows |
 | `doctor`, `patient` | who the sample belongs to and who referred it |
 | `lab_result`, `result_value` | drafts and completed results |
@@ -162,9 +163,8 @@ empty. The API serves this section as `GET /api/lab`.
 
 `TechnicianLabel`, `SignatoryName` and `SignatoryQualification` fill the sign-off
 band at the foot of every printed page: the label on the left prints under a
-placeholder stamp image (`wwwroot/img/lab-stamp.png`, delete the `<img>` in
-`signature()` or replace that file to change it), the name and qualification
-print on the right. Leave the name empty to print only the stamp column.
+blank space left for a hand stamp or wet signature, the name and qualification
+print on the right. Leave the name empty to print only the technician column.
 The letterhead opens each page and this band closes it, at the foot of the paper.
 A multi-test file is cut into whole A4 pages in `report-sheet.js` before it is
 printed (each test is measured and kept together), because a browser drops the

@@ -126,8 +126,10 @@ export function isAbnormal(value, lines, sex) {
 
   const n = Number(raw);
   if (Number.isNaN(n)) {
-    const words = refs.filter((r) => !/\d/.test(r.range));
-    return words.length > 0 && !words.some((r) => r.range.toLowerCase() === raw.toLowerCase());
+    // A dropdown label can read like a range ("0 - 2"), so every printed line
+    // counts as an acceptable answer, not only the word-only ones.
+    const allowed = refs.map((r) => r.range.toLowerCase());
+    return allowed.length > 0 && !allowed.includes(raw.toLowerCase());
   }
 
   const s = /^f/i.test(String(sex ?? '')) ? 'female' : sex ? 'male' : '';
