@@ -23,29 +23,14 @@ The target computer does **not** need .NET installed when using the
 self-contained published executable. It still needs access to SQL Server;
 publishing does not bundle a database server or copy your database.
 
-### 2. Create the database, schema and starter catalog
+### 2. Create the database, schema and master data
 
-Connect to SQL Server in Management Studio. Create an empty database named
-`PathologyTests` if it does not already exist:
+There are two scripts, run in order:
 
-```sql
-IF DB_ID(N'PathologyTests') IS NULL
-    CREATE DATABASE [PathologyTests];
-```
-
-Select `PathologyTests` in SSMS, then open and execute these three files in order:
-
-1. `database/schema.sql` creates the tables and indexes. It uses existence
-   checks, so it can be run again without dropping data.
-2. `database/seed.sql` inserts the starter categories, specimen types, tests
-   and parameters, including audit entries. It runs only when the catalog has
-   no tests; rerunning it won't overwrite a lab's catalog.
-3. `database/seed-menu.sql` is the lab's own menu: every test, parameter, unit,
-   reference range and dropdown option, with the BT/CT/PT/INR ranges this lab
-   uses, plus the urine and stool tests whose parameters print under group
-   headings. It is safe to run again and it is the authority: rows missing from it
-   are deleted when no result refers to them, and only switched inactive when
-   one does, so old reports keep printing.
+| File | What it does |
+| --- | --- |
+| `database/schema.sql` | Creates the `GSLabdesk` database if the server does not have it, then its tables and indexes. It uses existence checks, so it can be run again without dropping data. |
+| `database/seed.sql` | The lab's own menu: categories, specimens, every test, parameter, unit, reference range and dropdown option, with the BT/CT/PT/INR ranges this lab uses, plus the urine and stool tests whose parameters print under group headings. It is safe to run again and it is the authority: rows missing from it are deleted when no result refers to them, and only switched inactive when one does, so old reports keep printing. |
 
 Storage is one table per concept, with the relationships enforced by the
 database itself:
@@ -61,30 +46,25 @@ database itself:
 | `report_snapshot`, `report_line` | the frozen copy a completed report prints |
 | `lab_audit` | the audit trail |
 
-`schema.sql` no longer creates `lab_entity`, the older single-table JSON storage;
-nothing reads it. A database created by an earlier version still holds it, and
-`database/drop-legacy.sql` removes it. That script destroys whatever results and
-reports were still held there, so it refuses to run unless it is passed
-`-v ConfirmDrop=YES`.
-
 For LocalDB, the instance name is `(localdb)\MSSQLLocalDB`. If `sqlcmd` is
-installed, the equivalent commands are:
+installed, run both files from the repository root:
 
 ```powershell
-sqlcmd -S "(localdb)\MSSQLLocalDB" -E -b -Q "IF DB_ID(N'PathologyTests') IS NULL CREATE DATABASE [PathologyTests];"
-sqlcmd -S "(localdb)\MSSQLLocalDB" -d "PathologyTests" -E -b -I -i ".\database\schema.sql"
-sqlcmd -S "(localdb)\MSSQLLocalDB" -d "PathologyTests" -E -b -I -i ".\database\seed.sql"
-sqlcmd -S "(localdb)\MSSQLLocalDB" -d "PathologyTests" -E -b -I -f 65001 -i ".\database\seed-menu.sql"
+sqlcmd -S "(localdb)\MSSQLLocalDB" -E -b -I -f 65001 -i ".\database\schema.sql"
+sqlcmd -S "(localdb)\MSSQLLocalDB" -E -b -I -f 65001 -i ".\database\seed.sql"
 ```
 
-For SQL Server Express, use your instance name instead, for example
-`.\SQLEXPRESS`. The account creating the database needs permission to do so.
-If you use a different database name, create it and execute both files with that
-database selected.
+`schema.sql` creates the database, so there is no separate create step. In SSMS,
+open and execute `schema.sql`, then `seed.sql`; both switch to `GSLabdesk`
+themselves.
 
-Alternatively, after creating the database and configuring the connection
-string, the application's `--initialize` command applies `schema.sql` and
-`seed.sql` automatically. Both files are safe to apply again.
+For SQL Server Express, use your instance name instead, for example
+`.\SQLEXPRESS`. The account running the script needs permission to create a
+database.
+
+Alternatively, after configuring the connection string, the application's
+`--initialize` command creates the database if needed and applies both files.
+Both are safe to apply again.
 
 ### 3. Configure the connection
 
@@ -101,7 +81,7 @@ Create `src/LabDesk.Api/appsettings.Local.json` for your machine:
 ```json
 {
   "ConnectionStrings": {
-    "SqlServer": "Server=(localdb)\\MSSQLLocalDB;Database=PathologyTests;Integrated Security=True;TrustServerCertificate=True;"
+    "SqlServer": "Server=(localdb)\\MSSQLLocalDB;Database=GSLabdesk;Integrated Security=True;TrustServerCertificate=True;"
   },
   "Server": {
     "Url": "http://localhost:5000"
@@ -181,10 +161,10 @@ dotnet restore LabDesk.sln
 dotnet run --project .\src\LabDesk.Api\LabDesk.Api.csproj -- --initialize
 ```
 
-The initializer creates missing schema objects in the **configured, existing
-database**, then seeds the existing starter catalog if there are no tests.
-It does not overwrite an existing catalog, clear results, or reset lab settings.
-The SQL Server schema and seed files can also be run directly in SSMS.
+The initializer creates the **configured database** if the server does not have
+it, applies the schema, then inserts or updates the master data. It does not
+clear results or reset lab settings. The SQL Server schema and seed files can
+also be run directly in SSMS.
 
 The catalog remains laboratory-editable. Each parameter carries its own reference
 lines, which the laboratory enters; the application must not invent one.
@@ -262,7 +242,7 @@ The `publish/` output is ignored by source control.
    machine or server.
 2. Ensure SQL Server is installed or reachable, and create the database if it
    does not already exist. The shipped `database/schema.sql` and
-   `database/seed.sql` initialize its tables and starter catalog.
+   `database/seed.sql` initialize its tables and master data.
 3. Edit **the published folder's `appsettings.json`**. Replace `YOUR_SQL_SERVER`
    and set the correct database/authentication settings. Personal source
    settings are deliberately not published.
@@ -340,11 +320,8 @@ README.md
 publish.bat
 publish.ps1
 database/
-├── schema.sql                 # Idempotent SQL Server tables and indexes
-├── seed.sql                   # Idempotent SQL Server starter catalog
-├── seed-menu.sql              # Idempotent master menu: this lab's tests, ranges and options
-├── migrate-normal-ranges.sql  # One-off upgrade of an older database
-└── drop-legacy.sql            # One-off removal of the old JSON table
+├── schema.sql                 # Creates the database, then its tables and indexes
+└── seed.sql                   # The lab's tests, parameters, ranges and options
 docs/
 └── openapi.yaml               # API documentation
 src/

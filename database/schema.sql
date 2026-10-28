@@ -1,16 +1,20 @@
 /*
   SQL Server schema for LabDesk.
-  Connect to the target database before executing this script.
 
-  One table per concept, with the relationships enforced by foreign keys.
-  lab_audit holds the audit trail; report_snapshot and report_line hold the
-  frozen copy a completed report prints.
-
-  A database created by an older version also holds lab_entity, the retired
-  single-table JSON storage. Nothing reads it; database/drop-legacy.sql removes it.
+  Creates the GSLabdesk database if the server does not have it yet, then its
+  tables. One table per concept, with the relationships enforced by foreign
+  keys. lab_audit holds the audit trail; report_snapshot and report_line hold
+  the frozen copy a completed report prints.
 
   Safe to run repeatedly: existing tables, rows and indexes are preserved.
+  Run database/seed.sql afterwards for the test menu.
 */
+
+IF DB_ID(N'GSLabdesk') IS NULL
+    CREATE DATABASE [GSLabdesk];
+GO
+USE [GSLabdesk];
+GO
 
 IF OBJECT_ID(N'dbo.lab_audit', N'U') IS NULL
 BEGIN
@@ -28,9 +32,7 @@ GO
 
 /* =====================================================================
    Real tables. One table per concept, with foreign keys and unique
-   constraints the database enforces itself, replacing the JSON payloads
-   in lab_entity. lab_entity is kept until the application is switched
-   over and is then removed by database/drop-legacy.sql.
+   constraints the database enforces itself.
 
    A parameter's references are free text: normal_ranges holds a JSON array of
    the lines its row prints, so "Male: 65-176" and "Female: 26-170" are simply

@@ -25,6 +25,26 @@ public sealed class Database(IConfiguration configuration)
         return connection;
     }
 
+    /// <summary>Creates the configured database when the server does not have it yet.</summary>
+    public async Task EnsureDatabaseAsync()
+    {
+        var builder = new SqlConnectionStringBuilder(_connectionString);
+        var name = builder.InitialCatalog;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        builder.InitialCatalog = "master";
+        await using var connection = new SqlConnection(builder.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "IF DB_ID(@name) IS NULL BEGIN DECLARE @sql NVARCHAR(300) = N'CREATE DATABASE ' + QUOTENAME(@name); EXEC(@sql); END";
+        Sql.Bind(command, "@name", name);
+        await command.ExecuteNonQueryAsync();
+    }
+
     public async Task<T> InTransactionAsync<T>(Func<SqlConnection, SqlTransaction, Task<T>> work)
     {
         await using var connection = await OpenAsync();

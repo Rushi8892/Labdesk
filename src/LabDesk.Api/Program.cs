@@ -31,9 +31,10 @@ if (args.Contains("--initialize"))
             "Could not locate database/schema.sql and database/seed.sql. Keep both beside the executable.");
     }
 
+    await database.EnsureDatabaseAsync();
     await database.InitializeAsync(schema);
     await database.InitializeAsync(seed);
-    Console.WriteLine("Initialized the SQL Server schema and starter catalog.");
+    Console.WriteLine("Initialized the GSLabdesk schema and master data.");
     return;
 }
 
