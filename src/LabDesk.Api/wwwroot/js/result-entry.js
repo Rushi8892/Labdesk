@@ -99,9 +99,9 @@ export function mountResultEntry(host, { result, liveIx, onSaved }) {
   const renderRows = () => {
     const ps = params();
     setHTML($('[data-slot="noparams"]'), test() && ps.length === 0 ? html`<div class="xs muted">This test has no active parameters.</div>` : '');
-    setHTML(rowsHost, ps.map((p) => {
+    setHTML(rowsHost, ps.map((p, i) => {
       const r = rowFor(p);
-      return html`<div class="panel prow" data-row="${r.id}" data-testid="param-row-${r.id}">
+      return html`${p.section && p.section !== ps[i - 1]?.section ? html`<div class="prow-sec">${p.section}</div>` : ''}<div class="panel prow" data-row="${r.id}" data-testid="param-row-${r.id}">
         <div class="prow-grid">
           <div><div class="sb">${p.name}${p.required ? html`<span class="req"> *</span>` : ''}</div></div>
           <div class="row">${control(r)}${p.unit ? html`<span class="mono xs muted nowrap">${p.unit}</span>` : ''}</div>

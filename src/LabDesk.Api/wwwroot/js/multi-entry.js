@@ -94,6 +94,10 @@ export function mountMultiEntry(host, { liveIx, onSaved }) {
     return html`<input class="input ${p.dataType === 'Numeric' ? 'mono' : ''}" type="${type}"${type === 'number' ? html` step="any"` : ''} data-v="${p.id}" value="${value}" data-testid="input-value-${p.id}">`;
   };
 
+  // A parameter's report section (urine, stool) also groups the entry rows.
+  const sectionHead = (p, prev) => (p.section && p.section !== prev?.section
+    ? html`<div class="prow-sec">${p.section}</div>` : '');
+
   const rowHtml = (p) => {
     const r = rowFor(p);
     return html`<div class="panel prow" data-row="${p.id}" data-testid="param-row-${p.id}">
@@ -116,7 +120,7 @@ export function mountMultiEntry(host, { liveIx, onSaved }) {
           <button class="btn btn-ghost btn-sm" data-remove="${tid}" data-testid="button-remove-test-${tid}">Remove</button>
         </div>
         <div style="padding:12px;display:flex;flex-direction:column;gap:8px">
-          ${list.length ? list.map(rowHtml) : html`<div class="xs muted">No active parameters.</div>`}
+          ${list.length ? list.map((p, i) => html`${sectionHead(p, list[i - 1])}${rowHtml(p)}`) : html`<div class="xs muted">No active parameters.</div>`}
         </div>
       </section>`;
     }));

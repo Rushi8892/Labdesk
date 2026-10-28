@@ -109,6 +109,8 @@ const chunksOf = (r, build) => {
       const mid = (lo + hi) >> 1;
       if (fits(lines.slice(from, mid))) { best = mid; lo = mid + 1; } else hi = mid - 1;
     }
+    // Never end a page on a heading with no row under it.
+    if (best - 1 > from && lines[best - 1].section && lines[best - 1].section !== lines[best - 2]?.section) best -= 1;
     out.push({ sheet: r, lines: lines.slice(from, best), continued: from > 0 });
     from = best;
   }
