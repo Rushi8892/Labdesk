@@ -16,5 +16,9 @@
     <Content Include="../../database/*.sql" Link="database/%(Filename)%(Extension)"
              CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest"
              ExcludeFromSingleFile="true" />
+    <!-- Desktop launcher, icon and shortcut installer, copied beside the exe. -->
+    <Content Include="../../desktop/*" Link="%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest"
+             ExcludeFromSingleFile="true" />
   </ItemGroup>
 </Project>

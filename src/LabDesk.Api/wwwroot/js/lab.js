@@ -44,6 +44,11 @@ export function parameterCode(name, taken = []) {
   return code;
 }
 export const fmtDate = (s) => (s ? new Date(s).toLocaleString() : '\u2014');
+// Local calendar day as YYYY-MM-DD, so a date filter matches the day fmtDate shows.
+export const dayKey = (value) => {
+  const d = value instanceof Date ? value : new Date(value);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 export const msg = (e) => (e instanceof Error ? e.message : 'Request failed');
 const has = (n) => n !== null && n !== undefined;
 

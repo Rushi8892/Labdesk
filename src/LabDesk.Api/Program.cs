@@ -5,7 +5,7 @@ using System.Diagnostics;
 // folder, or any wrapper regardless of the current working directory.
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
-    Args = args.Where(argument => argument != "--initialize").ToArray(),
+    Args = args.Where(argument => argument is not "--initialize" and not "--no-browser").ToArray(),
     ContentRootPath = AppContext.BaseDirectory
 });
 builder.Configuration
@@ -147,7 +147,8 @@ api.MapGet("/audit", (AuditRepository audit) => audit.ListAsync());
 app.Map("/api/{**path}", () => Results.NotFound(new { error = "API endpoint not found." }));
 app.MapFallbackToFile("index.html");
 
-if (OperatingSystem.IsWindows() && builder.Configuration.GetValue("Browser:OpenOnStart", true))
+if (OperatingSystem.IsWindows() && !args.Contains("--no-browser") &&
+    builder.Configuration.GetValue("Browser:OpenOnStart", true))
 {
     app.Lifetime.ApplicationStarted.Register(() =>
     {

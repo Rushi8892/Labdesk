@@ -6,6 +6,10 @@
   <section class="col" style="width:400px;flex-shrink:0;border-right:1px solid hsl(var(--border))">
     <div style="padding:12px;border-bottom:1px solid hsl(var(--border));display:flex;flex-direction:column;gap:8px">
       <input class="input" data-f="search" placeholder="Search patient or test" data-testid="input-search-results">
+      <div class="row gap4">
+        <input class="input flex-1" type="date" data-f="date" aria-label="Report date" data-testid="input-filter-date">
+        <button class="btn btn-sm" data-act="date-all" data-testid="button-filter-all-dates" title="Show every date">All dates</button>
+      </div>
       <div class="row gap4 wrap" data-slot="filters"></div>
     </div>
     <div class="scroll flex-1" data-slot="list"></div>

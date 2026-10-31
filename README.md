@@ -227,6 +227,9 @@ LabDesk/
 ├── LabDesk.Api.exe       # Application + .NET runtime
 ├── appsettings.json     # Editable settings beside the executable
 ├── appsettings.Development.json
+├── GSLab.vbs            # Desktop launcher (starts the app, opens its window)
+├── GSLab.ico            # Desktop icon
+├── Install-DesktopShortcut.ps1
 ├── wwwroot/             # HTML, CSS, JavaScript and page files
 └── database/            # Schema scripts used by --initialize
 ```
@@ -260,6 +263,28 @@ intended, configure an appropriate listening address and firewall/reverse proxy.
 The existing single-laboratory workbench does not provide authenticated accounts
 or authorization; do not expose it publicly or use real patient data without
 the required security controls and laboratory validation.
+
+### Desktop icon
+
+The published folder ships a launcher, an icon and a one-time installer. Run
+this once from the published folder:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Install-DesktopShortcut.ps1
+```
+
+**G.S. LAB** then appears on the desktop. Double-clicking it starts
+`LabDesk.Api.exe` hidden if it is not already running, waits for the health
+check, and opens the interface in its own Edge app window (the default browser
+is used when Edge is missing). Closing that window leaves the server running for
+the next open; stop `LabDesk.Api.exe` in Task Manager to restart it after
+changing settings. The launcher uses `http://localhost:5000`, so change `Url` in
+`GSLab.vbs` if `Server:Url` is changed.
+
+If Windows reports **"An Application Control policy has blocked this file"**,
+Smart App Control or AppLocker on that PC is refusing the unsigned executable.
+Allow the application folder in that policy, or run the app on a PC where the
+policy is off; code-signing is the permanent fix.
 
 ## Behavior and maintenance
 
@@ -322,6 +347,10 @@ publish.ps1
 database/
 ├── schema.sql                 # Creates the database, then its tables and indexes
 └── seed.sql                   # The lab's tests, parameters, ranges and options
+desktop/
+├── GSLab.vbs                  # Desktop launcher: starts the app and opens its window
+├── GSLab.ico                  # Desktop icon
+└── Install-DesktopShortcut.ps1
 docs/
 └── openapi.yaml               # API documentation
 src/
