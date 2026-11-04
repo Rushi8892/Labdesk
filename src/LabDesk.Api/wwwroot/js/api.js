@@ -34,6 +34,7 @@ export const api = {
   saveParameter: (d) => req('POST', '/api/parameters', d),
   saveOption: (d) => req('POST', '/api/options', d),
   savePatient: (d) => req('POST', '/api/patients', d),
+  saveDoctor: (d) => req('POST', '/api/doctors', d),
   saveMaster: (d) => req('POST', '/api/masters', d),
   saveResult: (d) => req('POST', '/api/results', d),
 };

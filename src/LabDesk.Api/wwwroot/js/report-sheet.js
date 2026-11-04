@@ -17,9 +17,14 @@ const letterhead = (lab) => html`<header class="rs-letterhead">
 </header>`;
 
 // Who the report is for. Printed once per document, not once per test.
+// Referring doctors print with their title; "Self" is a register entry, not a doctor.
+const drName = (n) => {
+  const s = String(n ?? '').trim();
+  return !s || /^self$/i.test(s) || /^dr\b\.?/i.test(s) ? s : `Dr. ${s}`;
+};
 const identityCells = (r) => html`<div><div class="lbl">Patient's name</div><div class="rs-v" data-testid="text-report-patient">${r.patientName}</div></div>
   <div><div class="lbl">Age / sex</div><div class="rs-v">${r.age} y \u00b7 ${r.sex}</div></div>
-  <div><div class="lbl">Referred by</div><div class="rs-v">${r.doctorName || '\u2014'}</div></div>`;
+  <div><div class="lbl">Referred by</div><div class="rs-v">${drName(r.doctorName) || '\u2014'}</div></div>`;
 
 // A result the lab's own reference calls abnormal prints in red, so it is obvious
 // on paper without adding a flag column. Parameters that share a section print

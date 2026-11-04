@@ -181,16 +181,17 @@ export function openPatientEditor({ patient }) {
     return e;
   };
   // The doctor register is the only source of referring doctors; a patient links to
-  // one by id, never by a typed name.
-  const doctors = () => state.doctors.data ?? [];
+  // one by id, never by a typed name. A deactivated doctor stays pickable for the
+  // patient already linked to them, so saving the form never silently drops the link.
+  const doctors = () => (state.doctors.data ?? []).filter((d) => d.active || d.id === patient?.doctorId);
   const body = html`<div class="grid2">
     ${field('name', 'Name', input('name', f.name, { testid: 'input-patient-name' }))}
     ${field('age', 'Age (years)', input('age', f.age, { type: 'number', testid: 'input-patient-age' }))}
     ${field('sex', 'Sex', select('sex', f.sex, ['Male', 'Female', 'Other'], { testid: 'select-patient-sex' }))}
     ${field('phone', 'Phone (optional)', input('phone', f.phone, { testid: 'input-patient-phone' }))}
     ${field('doctorId', 'Referring doctor (optional)',
-      select('doctorId', f.doctorId, [{ value: '', label: 'None' }, ...doctors().map((d) => ({ value: str(d.id), label: d.name }))], { testid: 'select-patient-doctor' }),
-      { span: 2, hint: doctors().length ? '' : 'No doctors on file yet.' })}
+      select('doctorId', f.doctorId, [{ value: '', label: 'None' }, ...doctors().map((d) => ({ value: str(d.id), label: d.active ? d.name : `${d.name} (inactive)` }))], { testid: 'select-patient-doctor' }),
+      { span: 2, hint: doctors().length ? '' : 'No active doctors yet. Add one from the Doctors tab.' })}
   </div>`;
   openModal({
     title: patient ? `Edit patient ${patient.name}` : 'New patient', body,
@@ -204,6 +205,27 @@ export function openPatientEditor({ patient }) {
         // Not editable here any more, so an existing patient keeps the state it has.
         active: patient?.active ?? true,
       }));
+      ctx.close();
+    },
+  });
+}
+
+// Doctors are managed from the Doctors tab on the Patients page.
+export function openDoctorEditor({ doctor } = {}) {
+  const f = { name: doctor?.name ?? '', active: doctor?.active ?? true };
+  const body = html`<div class="grid2">
+    ${field('name', 'Doctor name', input('name', f.name, { testid: 'input-doctor-name' }),
+      { span: 2, hint: 'Reports print it as Dr. \u2026' })}
+    <div class="checks">${check('active', f.active, 'Active', 'check-doctor-active')}</div>
+  </div>`;
+  openModal({
+    title: doctor ? `Edit doctor ${doctor.name}` : 'New doctor',
+    subtitle: 'Added to the referring-doctor list patients choose from.',
+    body, saveLabel: doctor ? 'Save doctor' : 'Add doctor',
+    onMount: (ctx) => bindForm(ctx.root, f, () => ({})),
+    onSave: async (ctx) => {
+      if (!f.name.trim()) return ctx.setErr('Name is required.');
+      await mutate(() => api.saveDoctor({ id: doctor?.id ?? null, name: f.name.trim(), active: f.active }));
       ctx.close();
     },
   });
