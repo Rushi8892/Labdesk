@@ -1,12 +1,13 @@
 import { state, load } from '../store.js';
 import { api } from '../api.js';
 import { html, setHTML, skeleton, empty, errorBlock, onAct } from '../dom.js';
-import { fmtDate } from '../lab.js';
+import { fmtDate, dayKey } from '../lab.js';
 import { reportSheet } from '../report-sheet.js';
 
 export function mount(root) {
   const $ = (s) => root.querySelector(s);
   let search = '';
+  let date = dayKey(new Date());
   let sel = null;
   const rep = { id: 0, loading: false, error: null, data: null, seq: 0 };
 
@@ -40,12 +41,19 @@ export function mount(root) {
   function update() {
     const res = state.results;
     const t = search.trim().toLowerCase();
-    const completed = (res.data ?? []).filter((r) => r.status === 'Completed' && (!t || `${r.patientName} ${r.testName}`.toLowerCase().includes(t)))
+    const all = (res.data ?? []).filter((r) => r.status === 'Completed');
+    const onDay = all.filter((r) => !date || dayKey(r.completedAt) === date);
+    const completed = onDay.filter((r) => !t || `${r.patientName} ${r.testName}`.toLowerCase().includes(t))
       .sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''));
+    const none = !res.data || completed.length > 0 ? '' : all.length === 0
+      ? empty('No completed reports', 'Completed results appear here.')
+      : onDay.length === 0
+        ? empty('Nothing on this date', 'Pick another date or choose All dates.')
+        : empty('Nothing matches');
     setHTML($('[data-slot="list"]'), html`
       ${res.loading ? skeleton(8) : ''}
       ${res.error ? errorBlock('results') : ''}
-      ${res.data && completed.length === 0 ? empty('No completed reports', 'Completed results appear here.') : ''}
+      ${none}
       <table class="tbl"><tbody>${completed.map((x) => html`<tr class="click ${x.id === sel ? 'sel' : ''}" data-act="sel" data-id="${x.id}" data-testid="row-report-${x.id}">
         <td><div class="sb">${x.patientName}</div></td>
         <td><div>${x.testName}</div><div class="xxs muted">${fmtDate(x.completedAt)}</div></td></tr>`)}</tbody></table>`);
@@ -56,8 +64,11 @@ export function mount(root) {
     retry: () => load('results'),
     'retry-report': () => { if (rep.id) fetchReport(rep.id); },
     print: () => { if (rep.data) window.print(); },
+    'date-all': () => { date = ''; $('[data-f="date"]').value = ''; update(); },
   });
   $('[data-f="search"]').addEventListener('input', (e) => { search = e.target.value; update(); });
+  $('[data-f="date"]').value = date;
+  $('[data-f="date"]').addEventListener('input', (e) => { date = e.target.value; update(); });
   load('results');
   load('lab').then(renderReport);
   update();

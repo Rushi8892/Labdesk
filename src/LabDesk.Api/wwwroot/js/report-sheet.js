@@ -6,7 +6,7 @@ const COLUMNS = ['Parameter', 'Result', 'Unit', 'Reference / normal ranges'];
 const letterhead = (lab) => html`<header class="rs-letterhead">
   <img class="rs-logo" src="${lab.logo || 'img/gs-lab-mark.png'}" alt="">
   <div>
-    ${wordmark(lab.name || 'Laboratory', 30, 'text-report-lab-name')}
+    ${wordmark(lab.name || 'Laboratory', 36, 'text-report-lab-name')}
     ${lab.tagline ? html`<div class="rs-lab-tag">${lab.tagline}</div>` : ''}
   </div>
   ${(lab.address || lab.phone1 || lab.phone2) ? html`<div class="rs-contact" data-testid="text-report-contact">
@@ -64,7 +64,7 @@ const headBand = (lab, cells) => html`<header class="rs-head" data-testid="repor
 // A page is cut here, not by the browser: a break inside a table cell loses the
 // row that straddles it and a fixed band paints over the text, so each test block
 // is measured inside a hidden A4 strip and grouped into pages known to fit.
-const PAGE_H = 740;  // px between the letterhead and the sign-off of an A4 page
+const PAGE_H = 706;  // px between the letterhead and the sign-off of an A4 page
 const GAP = 22;      // .rs-test margin-top
 
 const title = (r, continued) => `${r.reportTitle || r.testName}${continued ? ' (continued)' : ''}`;

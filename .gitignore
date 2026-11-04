@@ -17,6 +17,14 @@ appsettings.Local.json
 *.tmp
 *.temp
 
+# Desktop app browser profile (normally under %LOCALAPPDATA%\GSLab)
+*.WebView2/
+
+# SQL Server data files and backups, which may contain patient data
+*.mdf
+*.ldf
+*.bak
+
 # Visual Studio publish profiles: per-machine paths from the publish wizard
 **/PublishProfiles/
 

@@ -4,7 +4,13 @@
 </header>
 <div class="split">
   <section class="col no-print" style="width:380px;flex-shrink:0;border-right:1px solid hsl(var(--border))">
-    <div style="padding:12px;border-bottom:1px solid hsl(var(--border))"><input class="input" data-f="search" placeholder="Search patient or test" data-testid="input-search-reports"></div>
+    <div style="padding:12px;border-bottom:1px solid hsl(var(--border));display:flex;flex-direction:column;gap:8px">
+      <input class="input" data-f="search" placeholder="Search patient or test" data-testid="input-search-reports">
+      <div class="row gap4">
+        <input class="input flex-1" type="date" data-f="date" aria-label="Report date" data-testid="input-filter-report-date">
+        <button class="btn btn-sm" data-act="date-all" data-testid="button-filter-report-all-dates" title="Show every date">All dates</button>
+      </div>
+    </div>
     <div class="scroll flex-1" data-slot="list"></div>
   </section>
   <section class="scroll flex-1 report-pane" data-slot="report"></section>

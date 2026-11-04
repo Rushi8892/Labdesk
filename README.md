@@ -215,19 +215,20 @@ or:
 powershell -ExecutionPolicy Bypass -File .\publish.ps1
 ```
 
-Both run `dotnet publish` for `win-x64`, self-contained and single-file, without
-trimming. Native dependencies are included in the executable and extracted by
-the runtime when needed. Publishing requires internet access to restore the
-Windows runtime packages.
+Both publish the server (`LabDesk.Api.exe`) and the desktop window
+(`GSLab.exe`) for `win-x64`, self-contained and single-file, without trimming.
+Native dependencies are included in the executable and extracted by the runtime
+when needed. Publishing requires internet access to restore the Windows runtime
+packages.
 
 The ready-to-copy output is **`publish/LabDesk/`**:
 
 ```text
 LabDesk/
-├── LabDesk.Api.exe       # Application + .NET runtime
+├── GSLab.exe            # Desktop window + .NET runtime - double-click this
+├── LabDesk.Api.exe      # Server + .NET runtime, started by GSLab.exe
 ├── appsettings.json     # Editable settings beside the executable
 ├── appsettings.Development.json
-├── GSLab.vbs            # Desktop launcher (starts the app, opens its window)
 ├── GSLab.ico            # Desktop icon
 ├── Install-DesktopShortcut.ps1
 ├── wwwroot/             # HTML, CSS, JavaScript and page files
@@ -250,8 +251,10 @@ The `publish/` output is ignored by source control.
    and set the correct database/authentication settings. Personal source
    settings are deliberately not published.
 4. On an empty database, run `.\LabDesk.Api.exe --initialize` once from PowerShell.
-5. Run `.\LabDesk.Api.exe`, or double-click it. The UI opens in the default browser.
-   Keep its console process running while using the application.
+5. Double-click `GSLab.exe`, or use the desktop icon created below. It opens the
+   interface in its own window; closing the window stops the server it started.
+   `.\LabDesk.Api.exe` is still the server: run it directly for console logs or
+   browser access.
 
 No SDK or separately installed .NET runtime is required on the target machine.
 Database data is managed separately; use SQL Server's backup/restore facilities
@@ -264,22 +267,24 @@ The existing single-laboratory workbench does not provide authenticated accounts
 or authorization; do not expose it publicly or use real patient data without
 the required security controls and laboratory validation.
 
-### Desktop icon
+### Desktop app and icon
 
-The published folder ships a launcher, an icon and a one-time installer. Run
-this once from the published folder:
+Double-click **`GSLab.exe`** in the published folder. It starts
+`LabDesk.Api.exe` hidden (unless a server is already answering), waits for the
+health check, and shows the interface in a normal application window - no
+browser chrome and no console. Closing the window stops the server it started.
+A second double-click brings the open window forward instead of starting another
+copy. The window uses the WebView2 runtime that ships with Microsoft Edge; when
+that runtime is missing, the app opens in the default browser instead.
+
+Run this once to put **G.S. LAB** on the desktop:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\Install-DesktopShortcut.ps1
 ```
 
-**G.S. LAB** then appears on the desktop. Double-clicking it starts
-`LabDesk.Api.exe` hidden if it is not already running, waits for the health
-check, and opens the interface in its own Edge app window (the default browser
-is used when Edge is missing). Closing that window leaves the server running for
-the next open; stop `LabDesk.Api.exe` in Task Manager to restart it after
-changing settings. The launcher uses `http://localhost:5000`, so change `Url` in
-`GSLab.vbs` if `Server:Url` is changed.
+The address comes from `Server:Url` in `appsettings.json` (default
+`http://localhost:5000`); `GSLab.exe` reads the same setting.
 
 If Windows reports **"An Application Control policy has blocked this file"**,
 Smart App Control or AppLocker on that PC is refusing the unsigned executable.
@@ -348,26 +353,29 @@ database/
 ├── schema.sql                 # Creates the database, then its tables and indexes
 └── seed.sql                   # The lab's tests, parameters, ranges and options
 desktop/
-├── GSLab.vbs                  # Desktop launcher: starts the app and opens its window
-├── GSLab.ico                  # Desktop icon
+├── GSLab.ico                  # Application and shortcut icon
 └── Install-DesktopShortcut.ps1
 docs/
 └── openapi.yaml               # API documentation
 src/
-└── LabDesk.Api/
-    ├── LabDesk.Api.csproj
+├── LabDesk.Api/               # ASP.NET Core server and the UI in wwwroot/
+│   ├── LabDesk.Api.csproj
+│   ├── Program.cs
+│   ├── appsettings.json
+│   ├── appsettings.Development.json
+│   ├── appsettings.Local.json # Optional, untracked personal settings
+│   ├── Data/                 # ADO.NET plumbing and one repository per concept
+│   ├── Models/               # Request, response and domain records
+│   ├── Services/             # The rules: validation, reports, snapshots
+│   └── wwwroot/
+│       ├── index.html
+│       ├── css/
+│       ├── js/
+│       └── pages/
+└── LabDesk.Desktop/          # GSLab.exe: window that starts the server
+    ├── LabDesk.Desktop.csproj
     ├── Program.cs
-    ├── appsettings.json
-    ├── appsettings.Development.json
-    ├── appsettings.Local.json # Optional, untracked personal settings
-    ├── Data/                 # ADO.NET plumbing and one repository per concept
-    ├── Models/               # Request, response and domain records
-    ├── Services/             # The rules: validation, reports, snapshots
-    └── wwwroot/
-        ├── index.html
-        ├── css/
-        ├── js/
-        └── pages/
+    └── MainForm.cs
 ```
 
 Build/intermediate output (`bin/`, `obj/`), caches, personal settings and
